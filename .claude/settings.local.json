@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd /c dir \"c:\\\\AI\\\\G_Mind - Copy\")",
+      "Bash(cmd /c \"cd /d \"c:\\\\AI\\\\G_Mind - Copy\" && mkdir alembic\\\\versions src\\\\api src\\\\models src\\\\schemas src\\\\services src\\\\workers src\\\\utils tests\\\\unit tests\\\\integration tests\\\\fixtures\\\\emails tests\\\\fixtures\\\\responses monitoring\\\\prometheus monitoring\\\\grafana\\\\dashboards monitoring\\\\alertmanager scripts 2>&1\")"
+    ]
+  }
+}
