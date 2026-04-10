@@ -1,0 +1,24 @@
+
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# Git
+.git/
+.gitignore
+
+# Project specific
+logs/
+postgres_data/
+redis_data/
+tests/
