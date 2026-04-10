@@ -57,3 +57,4 @@ collect_context.pyw
 project_context.txt
 debug_raw_search.json
 debug_serper.py
+.claude/
