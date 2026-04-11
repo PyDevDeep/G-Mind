@@ -79,3 +79,37 @@ class WorkerService:
             )
 
             return {"reply_json": reply.model_dump_json(), "task_id": str(task.id)}
+
+    async def process_send_draft(self, email_id: str) -> dict[str, str]:
+        """Створює чернетку в Gmail на основі згенерованої відповіді."""
+        import json
+
+        async with async_session_maker() as session:
+            repo = WorkerRepository(session)
+            email, task = await repo.get_email_and_task(email_id)
+
+            if not email or not task:
+                raise ValueError(f"Дані для email_id {email_id} не знайдено")
+
+            ai_response = await repo.get_ai_response(task.id)
+            if not ai_response or not ai_response.generated_reply:
+                raise ValueError(f"Згенерована відповідь для задачі {task.id} відсутня")
+
+            # Парсимо збережений JSON відповіді
+            reply_data = json.loads(ai_response.generated_reply)
+
+            logger.info("Виклик EmailService.create_draft")
+            email_service = EmailService()
+
+            # Синхронний мережевий виклик у thread
+            draft_id: str = await asyncio.to_thread(
+                email_service.create_draft,
+                to=email.sender,
+                subject=reply_data.get("subject", "Re:"),
+                body=reply_data.get("body", ""),
+                thread_id=email.thread_id,
+            )
+
+            await repo.update_task_completed(task.id, draft_id)
+
+            return {"draft_id": draft_id, "task_id": str(task.id)}

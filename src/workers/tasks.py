@@ -68,10 +68,10 @@ def generate_ai_reply(
 
     try:
         service = WorkerService()
-        result = asyncio.run(service.process_reply_generation(email_id))
+        asyncio.run(service.process_reply_generation(email_id))
 
         logger.info("Відповідь згенерована, планування send_draft")
-        send_draft.delay(email_id, result, correlation_id)  # type: ignore
+        send_draft.delay(email_id, correlation_id)  # type: ignore
 
         return {"status": "reply_generated", "email_id": email_id}
     except Exception as e:
@@ -86,12 +86,21 @@ def generate_ai_reply(
     max_retries=3,
 )
 def send_draft(
-    self: Task,
-    email_id: str,
-    reply_data: dict[str, Any],
-    correlation_id: str | None = None,
-):
+    self: Task, email_id: str, correlation_id: str | None = None
+) -> dict[str, Any]:
     bind_correlation_id(correlation_id)
     logger.info("Створення чернетки Gmail", email_id=email_id)
-    # TODO: Create Gmail DRAFT
-    return {"status": "draft_created", "email_id": email_id}
+
+    try:
+        service = WorkerService()
+        result = asyncio.run(service.process_send_draft(email_id))
+
+        logger.info("Пайплайн успішно завершено", draft_id=result.get("draft_id"))
+        return {
+            "status": "draft_created",
+            "email_id": email_id,
+            "draft_id": result.get("draft_id"),
+        }
+    except Exception as e:
+        logger.error("Помилка під час створення чернетки", error=str(e))
+        raise

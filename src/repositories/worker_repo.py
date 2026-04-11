@@ -83,3 +83,19 @@ class WorkerRepository:
             task.status = TaskStatusEnum.generating_reply
 
         await self.session.commit()
+
+    async def update_task_completed(self, task_id: uuid.UUID, draft_id: str) -> None:
+        """Зберігає ID чернетки та завершує задачу."""
+        response = await self.get_ai_response(task_id)
+        if response:
+            response.draft_id = draft_id
+
+        stmt = select(ProcessingTask).where(ProcessingTask.id == task_id)
+        task = (await self.session.execute(stmt)).scalar_one_or_none()
+        if task:
+            from sqlalchemy.sql import func
+
+            task.status = TaskStatusEnum.draft_created
+            task.completed_at = func.now()
+
+        await self.session.commit()
