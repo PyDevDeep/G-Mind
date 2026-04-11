@@ -27,8 +27,17 @@ async def handle_gmail_notification(
             email=notification.emailAddress,
         )
 
-        # 3. TODO: Перевірка дедуплікації (Phase 2/3)
-        # 4. TODO: Dispatch Celery task (Phase 2)
+        logger.info(
+            "Нова подія Gmail",
+            history_id=notification.historyId,
+            email=notification.emailAddress,
+        )
+
+        # Передаємо обробку оркестратору
+        from src.services.webhook_service import WebhookService
+
+        service = WebhookService()
+        await service.process_notification(notification)
 
         # Завжди повертаємо 200 OK для immediate ack, щоб уникнути нескінченних ретраїв
         return {"status": "ok"}
