@@ -1,8 +1,10 @@
+import asyncio
 import uuid
 from typing import Any
 
 from celery import Task
 
+from src.services.worker_service import WorkerService
 from src.utils.logging import bind_correlation_id, get_logger
 from src.workers.celery_app import celery_app
 
@@ -28,11 +30,25 @@ class GmailAPIError(Exception):
     retry_backoff_max=900,
     max_retries=5,
 )
-def classify_email(self: Task, email_id: str, correlation_id: str | None = None):
+def classify_email(
+    self: Task, email_id: str, correlation_id: str | None = None
+) -> dict[str, Any]:
     bind_correlation_id(correlation_id or str(uuid.uuid4()))
     logger.info("Початок класифікації листа", email_id=email_id)
-    # TODO: Load email -> AI classify -> Store result -> Chain to generate_reply
-    return {"status": "classified", "email_id": email_id}
+
+    try:
+        service = WorkerService()
+        result = asyncio.run(service.process_classification(email_id))
+
+        # Ланцюжок: Якщо лист потребує відповіді — плануємо наступну таску
+        if result.get("category") == "needs_reply":
+            logger.info("Лист потребує відповіді, планування generate_ai_reply")
+            generate_ai_reply.delay(email_id, result, correlation_id)  # type: ignore
+
+        return {"status": "classified", "email_id": email_id, "result": result}
+    except Exception as e:
+        logger.error("Помилка під час класифікації", error=str(e))
+        raise
 
 
 @celery_app.task(  # type: ignore[misc]
