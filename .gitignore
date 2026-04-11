@@ -34,7 +34,8 @@ wheels/
 .env
 .env.local
 .env.*.local
-
+credentials.json
+token.json
 # Database
 *.db
 *.sqlite

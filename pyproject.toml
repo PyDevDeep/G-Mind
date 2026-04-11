@@ -76,3 +76,5 @@ pythonVersion = "3.11"
 typeCheckingMode = "strict"
 useLibraryCodeForTypes = true
 reportMissingImports = true
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
