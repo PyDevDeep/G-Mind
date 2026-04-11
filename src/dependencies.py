@@ -1,7 +1,8 @@
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from src.config import get_settings
 
@@ -9,7 +10,8 @@ settings = get_settings()
 
 # Глобальний пул підключень до бази даних
 engine = create_async_engine(
-    settings.DATABASE_URL, pool_size=20, max_overflow=10, pool_pre_ping=True
+    settings.DATABASE_URL,
+    poolclass=NullPool,
 )
 async_session_maker = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False

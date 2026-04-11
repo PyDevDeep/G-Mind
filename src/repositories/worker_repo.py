@@ -46,7 +46,6 @@ class WorkerRepository:
             task_id=task_id,
             classification=classification.category.value,
             confidence_score=classification.confidence_score,
-            reasoning=classification.reasoning,
             model_used=stats.model_used,
             prompt_tokens=stats.prompt_tokens,
             completion_tokens=stats.completion_tokens,
