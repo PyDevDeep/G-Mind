@@ -99,3 +99,25 @@ class WorkerRepository:
             task.completed_at = func.now()
 
         await self.session.commit()
+
+    async def log_task_failure(
+        self, email_id: str, error_type: str, error_message: str, stack_trace: str
+    ) -> None:
+        """Реєструє критичну помилку після вичерпання ретраїв (Dead-letter)."""
+        from src.models.failed_task import FailedTask
+
+        _, task = await self.get_email_and_task(email_id)
+        if not task:
+            return  # Задачу не знайдено, логувати нікуди
+
+        task.status = TaskStatusEnum.failed
+
+        failed_record = FailedTask(
+            task_id=task.id,
+            error_type=error_type,
+            error_message=error_message,
+            stack_trace=stack_trace,
+            retry_exhausted=True,
+        )
+        self.session.add(failed_record)
+        await self.session.commit()

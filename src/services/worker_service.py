@@ -113,3 +113,15 @@ class WorkerService:
             await repo.update_task_completed(task.id, draft_id)
 
             return {"draft_id": draft_id, "task_id": str(task.id)}
+
+    async def process_task_failure(
+        self, email_id: str, exception: Exception, stack_trace: str
+    ) -> None:
+        """Передає критичну помилку в репозиторій."""
+        async with async_session_maker() as session:
+            repo = WorkerRepository(session)
+            error_type = type(exception).__name__
+            error_message = str(exception)
+            await repo.log_task_failure(
+                email_id, error_type, error_message, stack_trace
+            )
