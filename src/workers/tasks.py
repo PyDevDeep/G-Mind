@@ -65,8 +65,18 @@ def generate_ai_reply(
 ):
     bind_correlation_id(correlation_id)
     logger.info("Генерація AI відповіді", email_id=email_id)
-    # TODO: Load email context -> Generate reply -> Chain to send_draft
-    return {"status": "reply_generated", "email_id": email_id}
+
+    try:
+        service = WorkerService()
+        result = asyncio.run(service.process_reply_generation(email_id))
+
+        logger.info("Відповідь згенерована, планування send_draft")
+        send_draft.delay(email_id, result, correlation_id)  # type: ignore
+
+        return {"status": "reply_generated", "email_id": email_id}
+    except Exception as e:
+        logger.error("Помилка під час генерації відповіді", error=str(e))
+        raise
 
 
 @celery_app.task(  # type: ignore[misc]
