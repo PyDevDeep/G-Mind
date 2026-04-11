@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.router import api_router
 from src.config import get_settings
 from src.dependencies import engine, redis_client
 from src.utils.logging import bind_correlation_id, configure_logging, get_logger
@@ -37,6 +38,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="AI Email Assistant", lifespan=lifespan)
+
+
+app.include_router(api_router)
 
 # Безпека CORS
 app.add_middleware(
