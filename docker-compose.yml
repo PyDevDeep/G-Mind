@@ -48,6 +48,8 @@ services:
         condition: service_healthy
     volumes:
       - ./src:/app/src
+      - ./token.json:/app/token.json
+      - ./credentials.json:/app/credentials.json
     networks:
       - app-network
 
@@ -65,6 +67,8 @@ services:
         condition: service_healthy
     volumes:
       - ./src:/app/src
+      - ./token.json:/app/token.json
+      - ./credentials.json:/app/credentials.json
     networks:
       - app-network
 
@@ -80,6 +84,8 @@ services:
         condition: service_healthy
     volumes:
       - ./src:/app/src
+      - ./token.json:/app/token.json
+      - ./credentials.json:/app/credentials.json
     networks:
       - app-network
 
