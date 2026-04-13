@@ -74,6 +74,20 @@ class StorageService:
         )
         await self.session.execute(stmt)
 
+    async def update_task_completed(self, task_id: uuid.UUID, draft_id: str) -> None:
+        """Зберігає ID чернетки та позначає задачу як завершену."""
+        # Оновлюємо draft_id в AIResponse
+        stmt_res = (
+            update(AIResponse)
+            .where(AIResponse.task_id == task_id)
+            .values(draft_id=draft_id)
+        )
+        await self.session.execute(stmt_res)
+
+        # Оновлюємо статус задачі
+        await self.update_task_status(task_id, TaskStatusEnum.draft_created)
+        await self.session.flush()
+
     # --- AI Response CRUD ---
 
     async def upsert_ai_response(
@@ -114,6 +128,14 @@ class StorageService:
         await self.session.flush()
         return response
 
+    async def get_ai_response_by_task_id(
+        self, task_id: uuid.UUID
+    ) -> Optional[AIResponse]:
+        """Отримує AIResponse за task_id з явною типізацією."""
+        stmt = select(AIResponse).where(AIResponse.task_id == task_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
     # --- Failed Tasks ---
 
     async def create_failed_task(
@@ -133,6 +155,10 @@ class StorageService:
         self.session.add(failed)
         await self.session.flush()
         return failed
+
+    async def get_ai_response(self, task_id: uuid.UUID) -> Optional[AIResponse]:
+        stmt = select(AIResponse).where(AIResponse.task_id == task_id)
+        return (await self.session.execute(stmt)).scalar_one_or_none()
 
     async def list_failed_tasks(self, limit: int = 50) -> Sequence[FailedTask]:
         stmt = select(FailedTask).order_by(FailedTask.failed_at.desc()).limit(limit)
