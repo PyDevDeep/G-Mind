@@ -1,6 +1,7 @@
+import time
 import uuid
-from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
+from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -56,22 +57,36 @@ app.add_middleware(
 async def correlation_id_middleware(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
-    """Мідлвара для трекінгу Correlation ID та логування запитів."""
-    # Беремо ID з хедера або генеруємо новий
+    """Покращена мідлвара з вимірюванням тривалості запиту."""
+    start_time = time.perf_counter()
+
     correlation_id = request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
     bind_correlation_id(correlation_id)
 
-    logger.info("Incoming request", method=request.method, path=request.url.path)
+    # Логуємо вхідний запит
+    logger.info(
+        "http_request_started",
+        method=request.method,
+        path=request.url.path,
+        client_host=request.client.host if request.client else "unknown",
+    )
 
     response = await call_next(request)
 
-    logger.info("Request completed", status_code=response.status_code)
-    response.headers["X-Correlation-ID"] = correlation_id
+    process_time = time.perf_counter() - start_time
 
+    # Логуємо завершення з тривалістю
+    logger.info(
+        "http_request_completed",
+        status_code=response.status_code,
+        duration=f"{process_time:.4f}s",
+    )
+
+    response.headers["X-Correlation-ID"] = correlation_id
     return response
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     """Liveness probe для Docker/Nginx."""
     return {"status": "ok"}
