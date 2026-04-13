@@ -12,40 +12,34 @@ logger = get_logger(__name__)
 
 
 class LLMRateLimitError(Exception):
-    """Викликається при 429 від OpenAI/Anthropic."""
-
     pass
 
 
 class GmailAPIError(Exception):
-    """Викликається при збоях Gmail API."""
-
     pass
 
 
 @celery_app.task(  # type: ignore[misc]
     bind=True,
     autoretry_for=(LLMRateLimitError, GmailAPIError),
-    retry_backoff=60,  # 60s, 120s, 240s...
+    retry_backoff=60,
     retry_backoff_max=900,
     max_retries=5,
 )
-def classify_email(
-    self: Task, email_id: str, correlation_id: str | None = None
-) -> dict[str, Any]:
+def classify_email(self: Task, email_id: str, correlation_id: str | None = None):
     bind_correlation_id(correlation_id or str(uuid.uuid4()))
     logger.info("Початок класифікації листа", email_id=email_id)
 
     try:
         service = WorkerService()
-        result = asyncio.run(service.process_classification(email_id))
+        result: dict[str, Any] = asyncio.run(service.process_classification(email_id))
 
-        # Ланцюжок: Якщо лист потребує відповіді — плануємо наступну таску
         if result.get("category") == "needs_reply":
             logger.info("Лист потребує відповіді, планування generate_ai_reply")
-            generate_ai_reply.delay(email_id, result, correlation_id)  # type: ignore
+            # Використовуємо cast або ignore для методу delay, якого Pylance не бачить
+            generate_ai_reply.delay(email_id, correlation_id)  # type: ignore
 
-        return {"status": "classified", "email_id": email_id, "result": result}
+        return {"status": "classified", "email_id": email_id}
     except Exception as e:
         logger.error("Помилка під час класифікації", error=str(e))
         raise
@@ -57,12 +51,7 @@ def classify_email(
     retry_backoff=60,
     max_retries=3,
 )
-def generate_ai_reply(
-    self: Task,
-    email_id: str,
-    classification_data: dict[str, Any],
-    correlation_id: str | None = None,
-):
+def generate_ai_reply(self: Task, email_id: str, correlation_id: str | None = None):
     bind_correlation_id(correlation_id)
     logger.info("Генерація AI відповіді", email_id=email_id)
 
@@ -85,15 +74,13 @@ def generate_ai_reply(
     retry_backoff=30,
     max_retries=3,
 )
-def send_draft(
-    self: Task, email_id: str, correlation_id: str | None = None
-) -> dict[str, Any]:
+def send_draft(self: Task, email_id: str, correlation_id: str | None = None):
     bind_correlation_id(correlation_id)
     logger.info("Створення чернетки Gmail", email_id=email_id)
 
     try:
         service = WorkerService()
-        result = asyncio.run(service.process_send_draft(email_id))
+        result: dict[str, Any] = asyncio.run(service.process_send_draft(email_id))
 
         logger.info("Пайплайн успішно завершено", draft_id=result.get("draft_id"))
         return {

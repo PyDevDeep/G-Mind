@@ -1,10 +1,9 @@
 import asyncio
-from typing import Any
 
 from src.dependencies import async_session_maker, redis_client
-from src.repositories.email_repo import EmailRepository
 from src.schemas.webhook import GmailNotification
 from src.services.email_service import EmailService
+from src.services.storage_service import StorageService
 from src.services.watch_service import WatchService
 from src.utils.logging import get_logger
 from src.workers.tasks import classify_email
@@ -13,26 +12,19 @@ logger = get_logger(__name__)
 
 
 class WebhookService:
-    def __init__(self) -> None:
+    def __init__(self):
         self.email_service = EmailService()
         self.watch_service = WatchService()
 
     async def process_notification(self, notification: GmailNotification) -> None:
-        """Обробляє push-сповіщення: шукає нові листи та відправляє їх у Celery."""
         redis_key = f"gmail_history_id:{notification.emailAddress}"
         last_history_id = await redis_client.get(redis_key)
 
-        # Якщо це перший запуск, просто зберігаємо ID і чекаємо наступних подій
         if not last_history_id:
-            logger.info(
-                "Відсутній попередній historyId. Зберігаємо поточний.",
-                history_id=notification.historyId,
-            )
             await redis_client.set(redis_key, str(notification.historyId))
             return
 
-        # Запитуємо зміни через синхронний клієнт Google
-        history_events: Any = await asyncio.to_thread(
+        history_events = await asyncio.to_thread(
             self.watch_service.check_history_gap, start_history_id=last_history_id
         )
 
@@ -43,43 +35,46 @@ class WebhookService:
                     new_message_ids.add(msg_added["message"]["id"])
 
         if not new_message_ids:
-            logger.info(
-                "Немає нових вхідних повідомлень (можливо це подія прочитання/видалення)"
-            )
             await redis_client.set(redis_key, str(notification.historyId))
             return
 
         async with async_session_maker() as session:
-            repo = EmailRepository(session)
+            storage = StorageService(session)
 
             for msg_id in new_message_ids:
-                if await repo.email_exists(msg_id):
-                    logger.debug("Лист вже існує (дедуплікація)", message_id=msg_id)
+                # Перевірка дедуплікації через StorageService
+                if await storage.get_email_by_message_id(msg_id):
                     continue
 
                 raw_msg = await asyncio.to_thread(
                     self.email_service.get_message, msg_id
                 )
 
-                # ЗАХИСТ ВІД ЗАЦИКЛЕННЯ: Ігноруємо вихідні листи та чернетки
+                # Захист від зациклення
                 label_ids = raw_msg.get("labelIds", [])
                 if "DRAFT" in label_ids or "SENT" in label_ids:
-                    logger.debug(
-                        "Ігнорування чернетки або надісланого листа", message_id=msg_id
-                    )
                     continue
 
-                email_db_id = await repo.save_new_email_and_task(
-                    raw_msg, self.email_service
-                )
+                # Формуємо дані для збереження
+                headers = {
+                    h["name"].lower(): h["value"]
+                    for h in raw_msg["payload"].get("headers", [])
+                }
+                email_data = {
+                    "message_id": raw_msg["id"],
+                    "thread_id": raw_msg["threadId"],
+                    "subject": headers.get("subject"),
+                    "sender": headers.get("from", "unknown"),
+                    "recipient": headers.get("to", "unknown"),
+                    "body": self.email_service.parse_email_body(raw_msg["payload"]),
+                }
+
+                # Атомарне збереження листа та задачі
+                email_db_id = await storage.save_incoming_email(email_data, raw_msg)
 
                 logger.info(
-                    "Відправка задачі в Celery",
-                    email_id=str(email_db_id),
-                    gmail_id=msg_id,
+                    "Email registered, dispatching task", email_id=str(email_db_id)
                 )
-                # Відправляємо задачу у фонову чергу Redis
                 classify_email.delay(str(email_db_id))  # type: ignore[attr-defined]
 
-        # Оновлюємо маркер тільки після успішної обробки
         await redis_client.set(redis_key, str(notification.historyId))
