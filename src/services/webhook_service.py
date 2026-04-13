@@ -60,6 +60,15 @@ class WebhookService:
                 raw_msg = await asyncio.to_thread(
                     self.email_service.get_message, msg_id
                 )
+
+                # ЗАХИСТ ВІД ЗАЦИКЛЕННЯ: Ігноруємо вихідні листи та чернетки
+                label_ids = raw_msg.get("labelIds", [])
+                if "DRAFT" in label_ids or "SENT" in label_ids:
+                    logger.debug(
+                        "Ігнорування чернетки або надісланого листа", message_id=msg_id
+                    )
+                    continue
+
                 email_db_id = await repo.save_new_email_and_task(
                     raw_msg, self.email_service
                 )
@@ -69,7 +78,7 @@ class WebhookService:
                     email_id=str(email_db_id),
                     gmail_id=msg_id,
                 )
-                # Відправляємо задачу у фонову чергу Redis (ігноруємо false-positive від Pylance)
+                # Відправляємо задачу у фонову чергу Redis
                 classify_email.delay(str(email_db_id))  # type: ignore[attr-defined]
 
         # Оновлюємо маркер тільки після успішної обробки
