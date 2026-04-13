@@ -18,6 +18,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
+# Встановлюємо curl для healthcheck    
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 # Створюємо non-root користувача для безпеки
 RUN groupadd -r ai_email && useradd -r -g ai_email ai_email
 

@@ -11,9 +11,14 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ai_email_db}"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
     networks:
       - app-network
 
@@ -26,9 +31,14 @@ services:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
     networks:
       - app-network
 
@@ -50,6 +60,17 @@ services:
       - ./src:/app/src
       - ./token.json:/app/token.json
       - ./credentials.json:/app/credentials.json
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
     networks:
       - app-network
 
@@ -57,6 +78,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    # Встановлюємо worker_shutdown_timeout рівним grace period, щоб Celery не чекав вічно
     command: celery -A src.workers.celery_app worker --loglevel=info
     env_file:
       - .env
@@ -69,6 +91,18 @@ services:
       - ./src:/app/src
       - ./token.json:/app/token.json
       - ./credentials.json:/app/credentials.json
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A src.workers.celery_app inspect ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    stop_grace_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
     networks:
       - app-network
 
@@ -86,6 +120,12 @@ services:
       - ./src:/app/src
       - ./token.json:/app/token.json
       - ./credentials.json:/app/credentials.json
+    stop_grace_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
     networks:
       - app-network
 
