@@ -130,6 +130,7 @@ services:
       - app-network
   celery-exporter:
     image: danihodovic/celery-exporter:latest
+    platform: linux/amd64
     command: ["--broker-url", "${REDIS_URL:-redis://redis:6379/0}"]
     ports:
       - "9808:9808"
@@ -160,7 +161,7 @@ services:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     ports:
-      - "9090:9090"
+      - "9092:9090"
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -170,7 +171,7 @@ services:
   grafana:
     image: grafana/grafana:10.0.3
     ports:
-      - "3000:3000"
+      - "3002:3000"
     volumes:
       - grafana_data:/var/lib/grafana
     environment:
