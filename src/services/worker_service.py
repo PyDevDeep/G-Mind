@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 import uuid
 from typing import Any
 
@@ -10,6 +11,7 @@ from src.services.ai_service import AIService
 from src.services.email_service import EmailService
 from src.services.storage_service import StorageService
 from src.utils.logging import get_logger
+from src.utils.metrics import CLASSIFICATION_LATENCY, EMAILS_PROCESSED
 
 logger = get_logger(__name__)
 
@@ -31,9 +33,13 @@ class WorkerService:
 
             await storage.update_task_status(task.id, TaskStatusEnum.processing)
 
-            classification, stats = await asyncio.to_thread(
-                self.ai_service.classify, email.body or email.subject or ""
-            )
+            start_time = time.perf_counter()
+            try:
+                classification, stats = await asyncio.to_thread(
+                    self.ai_service.classify, email.body or email.subject or ""
+                )
+            finally:
+                CLASSIFICATION_LATENCY.observe(time.perf_counter() - start_time)
 
             await storage.upsert_ai_response(
                 task_id=task.id,
@@ -43,6 +49,10 @@ class WorkerService:
             )
             await storage.update_task_status(task.id, TaskStatusEnum.classified)
             await session.commit()
+
+            # Якщо лист не потребує відповіді, цикл завершено
+            if classification.category.value != "needs_reply":
+                EMAILS_PROCESSED.labels(status=classification.category.value).inc()
 
             return {"category": classification.category.value, "task_id": str(task.id)}
 
@@ -116,9 +126,10 @@ class WorkerService:
                 thread_id=email.thread_id,
             )
 
-            # ТЕПЕР ЦЕЙ МЕТОД ІСНУЄ В STORAGE SERVICE
             await storage.update_task_completed(task.id, draft_id)
             await session.commit()
+
+            EMAILS_PROCESSED.labels(status="draft_created").inc()
             return {"draft_id": draft_id}
 
     async def process_task_failure(
@@ -126,14 +137,23 @@ class WorkerService:
     ) -> None:
         async with async_session_maker() as session:
             storage = StorageService(session)
-            u_email_id = uuid.UUID(email_id)  # Фікс для Pylance
+            u_email_id = uuid.UUID(email_id)
             task = await storage.get_task_by_email_id(u_email_id)
-            if task:
-                await storage.create_failed_task(
-                    task_id=task.id,
-                    error_type=type(exception).__name__,
-                    message=str(exception),
-                    stack=stack_trace,
-                )
-                await storage.update_task_status(task.id, TaskStatusEnum.failed)
-                await session.commit()
+
+            # Guard Clause: Якщо таски немає, просто виходимо
+            if not task:
+                logger.error("Task not found for failure processing", email_id=email_id)
+                return
+
+            # Тепер Pylance знає, що task точно не None
+            await storage.create_failed_task(
+                task_id=task.id,
+                error_type=type(exception).__name__,
+                message=str(exception),
+                stack=stack_trace,
+            )
+            await storage.update_task_status(task.id, TaskStatusEnum.failed)
+            await session.commit()
+
+            # Записуємо метрику (з Task 4.1.1)
+            EMAILS_PROCESSED.labels(status="failed").inc()

@@ -5,6 +5,7 @@ from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.api.router import api_router
 from src.config import get_settings
@@ -40,7 +41,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="AI Email Assistant", lifespan=lifespan)
 
-
+# Ініціалізація та експорт стандартних метрик FastAPI
+Instrumentator().instrument(app).expose(app)
 app.include_router(api_router)
 
 # Безпека CORS
