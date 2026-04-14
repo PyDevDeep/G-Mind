@@ -130,7 +130,7 @@ services:
       - app-network
   celery-exporter:
     image: danihodovic/celery-exporter:latest
-    command: ["--broker-url", "${REDIS_URL}"]
+    command: ["--broker-url", "${REDIS_URL:-redis://redis:6379/0}"]
     ports:
       - "9808:9808"
     networks:
@@ -184,3 +184,5 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  prometheus_data:
+  grafana_data:
