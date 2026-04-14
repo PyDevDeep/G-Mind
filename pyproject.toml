@@ -27,6 +27,7 @@ prometheus-fastapi-instrumentator = "^7.0.0"
 orjson = "^3.10.0"
 apscheduler = "^3.10.4"
 prometheus-client = "^0.25.0"
+celery-prometheus-exporter = "^1.7.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"

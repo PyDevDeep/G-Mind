@@ -282,6 +282,22 @@ zookeeper = ["kazoo (>=1.3.1)"]
 zstd = ["zstandard (==0.23.0)"]
 
 [[package]]
+name = "celery-prometheus-exporter"
+version = "1.7.0"
+description = "Simple Prometheus metrics exporter for Celery"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "celery-prometheus-exporter-1.7.0.tar.gz", hash = "sha256:8fc2d5909921c44f01c8c1b7d956d92e6966f2e14eec196bf60735e39a0e0991"},
+    {file = "celery_prometheus_exporter-1.7.0-py2-none-any.whl", hash = "sha256:a3ba0d3340b546ae82b36fef7645ccbc54c2b696fc3df05bb9ee28a402e710e1"},
+]
+
+[package.dependencies]
+celery = ">=3"
+prometheus-client = ">=0.0.20"
+
+[[package]]
 name = "certifi"
 version = "2026.2.25"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -3628,4 +3644,4 @@ dev = ["pytest", "setuptools"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.14"
-content-hash = "1e61a32d079ef1504eb4558b7925c7f9d40c0cee48ea416e5eaa29079e6fe260"
+content-hash = "d92e30501b8031889bddc4f8a6d510b26a49fea0daf277b919fe3d1ca03456f3"

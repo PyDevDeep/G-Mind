@@ -79,11 +79,9 @@ services:
       context: .
       dockerfile: Dockerfile
     # Встановлюємо worker_shutdown_timeout рівним grace period, щоб Celery не чекав вічно
-    command: celery -A src.workers.celery_app worker -E --loglevel=info
+    command: celery -A src.workers.celery_app worker -P threads -c 4 -E --loglevel=info
     env_file:
       - .env
-    ports:
-      - "8001:8001"
     depends_on:
       redis:
         condition: service_healthy
@@ -131,9 +129,10 @@ services:
     networks:
       - app-network
   celery-exporter:
-    image: danihodovic/celery-exporter:latest
-    platform: linux/amd64
-    command: ["--broker-url", "${REDIS_URL:-redis://redis:6379/0}"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery-prometheus-exporter --broker=${REDIS_URL:-redis://redis:6379/0} --port=9808
     ports:
       - "9808:9808"
     networks:
