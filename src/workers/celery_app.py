@@ -2,7 +2,8 @@ import time
 from typing import Any, Dict, Optional, Tuple
 
 from celery import Celery, Task
-from celery.signals import task_postrun, task_prerun
+from celery.signals import task_postrun, task_prerun, worker_ready
+from prometheus_client import start_http_server
 
 from src.config import get_settings
 from src.utils.logging import bind_correlation_id, get_logger
@@ -31,6 +32,14 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     task_default_queue="default",
 )
+
+
+@worker_ready.connect
+def start_metrics_server(**kwargs: Any) -> None:
+    """Запускає Prometheus HTTP сервер для кастомних метрик воркера."""
+    # Запускаємо сервер на порту 8001 всередині контейнера воркера
+    start_http_server(8001)
+    logger.info("Prometheus metrics server started on port 8001")
 
 
 @task_prerun.connect

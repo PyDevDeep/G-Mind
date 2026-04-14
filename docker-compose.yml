@@ -79,9 +79,11 @@ services:
       context: .
       dockerfile: Dockerfile
     # Встановлюємо worker_shutdown_timeout рівним grace period, щоб Celery не чекав вічно
-    command: celery -A src.workers.celery_app worker --loglevel=info
+    command: celery -A src.workers.celery_app worker -E --loglevel=info
     env_file:
       - .env
+    ports:
+      - "8001:8001"
     depends_on:
       redis:
         condition: service_healthy
