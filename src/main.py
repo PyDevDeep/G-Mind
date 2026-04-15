@@ -6,10 +6,13 @@ from typing import Awaitable, Callable
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from src.api.router import api_router
 from src.config import get_settings
 from src.dependencies import engine, redis_client
+from src.utils.limiter import limiter
 from src.utils.logging import bind_correlation_id, configure_logging, get_logger
 
 settings = get_settings()
@@ -40,7 +43,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="AI Email Assistant", lifespan=lifespan)
-
+# Реєструємо лімітер у стейті додатку (обов'язкова вимога slowapi)
+app.state.limiter = limiter
+# Вчимо FastAPI віддавати правильний JSON при блокуванні (замість Internal Server Error)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 # Ініціалізація та експорт стандартних метрик FastAPI
 Instrumentator().instrument(app).expose(app)
 app.include_router(api_router)
