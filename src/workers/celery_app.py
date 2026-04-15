@@ -31,6 +31,8 @@ celery_app.conf.update(
     task_reject_on_worker_lost=True,
     worker_prefetch_multiplier=1,
     task_default_queue="default",
+    worker_send_task_events=True,
+    task_send_sent_event=True,
 )
 
 
