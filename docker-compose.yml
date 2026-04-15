@@ -171,12 +171,14 @@ services:
     networks:
       - app-network
 
-  grafana:
+  ggrafana:
     image: grafana/grafana:10.0.3
     ports:
       - "3002:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+      # ДОДАЙ ЦЕЙ РЯДОК:
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     networks:
@@ -212,3 +214,4 @@ volumes:
   redis_data:
   prometheus_data:
   grafana_data:
+  loki_data:

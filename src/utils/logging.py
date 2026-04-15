@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from contextvars import ContextVar
 from typing import Any, MutableMapping
@@ -31,7 +32,20 @@ def add_correlation_id(
     return event_dict
 
 
-def configure_logging(log_level: str = "INFO", json_format: bool = False) -> None:
+def add_container_metadata(
+    logger: logging.Logger, log_method: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
+    """Додає метадані контейнера для зручної фільтрації в Loki."""
+    event_dict["service_name"] = os.getenv("SERVICE_NAME", "ai-email-assistant")
+    event_dict["environment"] = os.getenv("ENVIRONMENT", "production")
+    return event_dict
+
+
+def configure_logging(log_level: str = "INFO", json_format: bool | None = None) -> None:
+    # Примусово вмикаємо JSON у Docker, якщо не передано інше
+    if json_format is None:
+        json_format = os.getenv("LOG_JSON_FORMAT", "true").lower() == "true"
+
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
@@ -41,6 +55,7 @@ def configure_logging(log_level: str = "INFO", json_format: bool = False) -> Non
     processors = [
         structlog.contextvars.merge_contextvars,
         add_correlation_id,
+        add_container_metadata,  # <--- Додано процесор метаданих
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
