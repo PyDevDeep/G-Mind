@@ -1,0 +1,64 @@
+groups:
+  - name: ai_email_alerts
+    rules:
+      # 1. Celery Worker Down
+      - alert: CeleryWorkerDown
+        expr: up{job="celery"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Celery Worker is DOWN"
+          description: "Target {{ $labels.instance }} has been unreachable for 5 minutes."
+
+      # 2. Queue Depth High
+      - alert: QueueDepthHigh
+        expr: sum(celery_queue_length) > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Celery Queue is backing up"
+          description: "Queue depth is {{ $value }}, waiting longer than 10m."
+
+      # 3. Task Error Rate High
+      - alert: TaskErrorRateHigh
+        # Prometheus видасть NaN, якщо тасок 0 (ділення на 0), алерт просто не спрацює, що є нормою.
+        expr: sum(rate(celery_tasks{state="FAILURE"}[5m])) / sum(rate(celery_tasks[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Celery Error Rate > 5%"
+          description: "Task failure rate is currently {{ $value | humanizePercentage }}."
+
+      # 4. API/LLM Latency High
+      - alert: LLMLatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 Latency > 10s"
+          description: "API/LLM 95th percentile latency is {{ $value }} seconds."
+
+      # 5. Postgres Connections High
+      - alert: PostgresConnectionsHigh
+        expr: sum(pg_stat_database_numbackends) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High PostgreSQL connections"
+          description: "Postgres has {{ $value }} active connections. Nearing max capacity."
+
+      # 6. Redis Memory High
+      - alert: RedisMemoryHigh
+        # Працює ТІЛЬКИ якщо в redis задано maxmemory. Інакше треба хардкодити байти.
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory > 80%"
+          description: "Redis is using {{ $value | humanize }}% of available memory."

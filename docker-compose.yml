@@ -157,11 +157,21 @@ services:
       - "9187:9187"
     networks:
       - app-network
-
+  alertmanager:
+    image: prom/alertmanager:v0.25.0
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager/config.yml:/etc/alertmanager/config.yml
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+    networks:
+      - app-network
   prometheus:
     image: prom/prometheus:v2.45.0
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml
       - prometheus_data:/prometheus
     ports:
       - "9092:9090"
@@ -171,13 +181,12 @@ services:
     networks:
       - app-network
 
-  ggrafana:
+  grafana:
     image: grafana/grafana:10.0.3
     ports:
       - "3002:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-      # ДОДАЙ ЦЕЙ РЯДОК:
       - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
