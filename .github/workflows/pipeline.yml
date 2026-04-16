@@ -33,6 +33,7 @@ jobs:
       - name: Security Audit (pip-audit)
         run: |
           pip install pip-audit
+          poetry self add poetry-plugin-export
           poetry export -f requirements.txt --output requirements.txt
           pip-audit -r requirements.txt
 
