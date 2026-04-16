@@ -1,0 +1,61 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11" # Зміни на свою версію, якщо інша
+
+      - name: Install Poetry
+        run: curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
+      - name: Run Linters (Ruff)
+        run: poetry run ruff check src/
+
+      - name: Run Type Checker (Mypy)
+        run: poetry run mypy src/
+
+      - name: Security Audit (pip-audit)
+        run: |
+          pip install pip-audit
+          poetry export -f requirements.txt --output requirements.txt
+          pip-audit -r requirements.txt
+
+      - name: Run Tests with Coverage
+        # Зміни --cov-fail-under на свій реальний відсоток (напр. 50), щоб не блокувати деплой
+        run: poetry run pytest --cov=src --cov-report=xml --cov-fail-under=60
+
+  deploy:
+    # Деплой запускається ТІЛЬКИ якщо тести і лінтери пройшли успішно
+    needs: test-and-lint
+    # Деплой працює ТІЛЬКИ при пуші в main (не для pull requests)
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Execute Remote SSH Commands
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          # Шлях має відповідати директорії проєкту на твоєму сервері (напр. /home/ubuntu/G-Mind)
+          script: |
+            cd /home/${{ secrets.SERVER_USER }}/G-Mind
+            git pull origin main
+            docker compose up -d --build
