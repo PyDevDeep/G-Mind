@@ -1,6 +1,6 @@
 import enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ClassificationCategory(str, enum.Enum):
@@ -13,29 +13,42 @@ class ClassificationCategory(str, enum.Enum):
 class ClassificationResult(BaseModel):
     """Результат класифікації вхідного листа."""
 
+    model_config = ConfigDict(extra="forbid", strict=True)
+
     category: ClassificationCategory = Field(description="Категорія листа")
     confidence_score: float = Field(
         ge=0.0, le=1.0, description="Впевненість моделі від 0.0 до 1.0"
     )
     reasoning: str = Field(
-        description="Коротке логічне обґрунтування обраної категорії"
+        ...,
+        max_length=2000,
+        description="Коротке логічне обґрунтування обраної категорії",
     )
 
 
 class GeneratedReply(BaseModel):
     """Згенерована чернетка відповіді."""
 
-    subject: str = Field(description="Тема листа-відповіді")
-    body: str = Field(description="Тіло листа-відповіді у форматі plain text")
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    subject: str = Field(..., max_length=1024, description="Тема листа-відповіді")
+    # Тіло листа лімітуємо 50 000 символами
+    body: str = Field(
+        ..., max_length=50000, description="Тіло листа-відповіді у форматі plain text"
+    )
     tone: str = Field(
-        description="Тон, який було використано для відповіді (наприклад, 'professional', 'friendly')"
+        ...,
+        max_length=100,
+        description="Тон, який було використано для відповіді (наприклад, 'professional', 'friendly')",
     )
 
 
 class AIUsageStats(BaseModel):
     """Статистика використання LLM для трекінгу вартості."""
 
-    model_used: str
-    prompt_tokens: int = 0
-    completion_tokens: int = 0
-    processing_time_ms: int = 0
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    model_used: str = Field(..., max_length=255)
+    prompt_tokens: int = Field(default=0, ge=0)
+    completion_tokens: int = Field(default=0, ge=0)
+    processing_time_ms: int = Field(default=0, ge=0)
