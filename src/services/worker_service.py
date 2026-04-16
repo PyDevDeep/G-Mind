@@ -6,7 +6,7 @@ from typing import Any
 
 from src.dependencies import async_session_maker
 from src.models.task import TaskStatusEnum
-from src.schemas.ai import ClassificationResult
+from src.schemas.ai import ClassificationCategory, ClassificationResult
 from src.services.ai_service import AIService
 from src.services.email_service import EmailService
 from src.services.storage_service import StorageService
@@ -77,7 +77,7 @@ class WorkerService:
                 raise ValueError("AI Response not found")
 
             classification = ClassificationResult(
-                category=res.classification,  # type: ignore
+                category=ClassificationCategory(res.classification),
                 confidence_score=res.confidence_score,
                 reasoning="Retrieved from DB",
             )
