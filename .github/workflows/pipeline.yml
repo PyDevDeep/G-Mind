@@ -27,8 +27,8 @@ jobs:
       - name: Run Linters (Ruff)
         run: poetry run ruff check src/
 
-      - name: Run Type Checker (Mypy)
-        run: poetry run mypy src/
+      - name: Run Type Checker (Pyright)
+        run: poetry run pyright src/
 
       - name: Security Audit (pip-audit)
         run: |
