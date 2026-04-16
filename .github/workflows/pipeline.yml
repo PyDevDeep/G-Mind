@@ -9,6 +9,29 @@ on:
 jobs:
   test-and-lint:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_password
+          POSTGRES_DB: ai_email_db
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6381:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,6 +59,9 @@ jobs:
           poetry self add poetry-plugin-export
           poetry export -f requirements.txt --output requirements.txt
           pip-audit -r requirements.txt
+
+      - name: Run DB Migrations
+        run: poetry run alembic upgrade head
 
       - name: Run Tests with Coverage
         # Зміни --cov-fail-under на свій реальний відсоток (напр. 50), щоб не блокувати деплой

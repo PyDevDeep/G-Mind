@@ -23,7 +23,13 @@ def is_retryable_http_error(exception: BaseException) -> bool:
 class EmailService:
     def __init__(self):
         self.client = GmailClient()
-        self.service = self.client.get_service()
+        self._service: Any | None = None
+
+    @property
+    def service(self) -> Any:
+        if self._service is None:
+            self._service = self.client.get_service()
+        return self._service
 
     @retry(
         wait=wait_exponential(multiplier=1, min=4, max=60),
