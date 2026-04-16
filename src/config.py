@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5434
 
+    CORS_ORIGINS: list[str] = ["http://localhost", "http://localhost:3000"]
+
     @computed_field
     @property
     def DATABASE_URL(self) -> str:

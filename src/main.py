@@ -54,10 +54,12 @@ app.include_router(api_router)
 # Безпека CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # В production замінити на конкретні домени
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    # Дозволяємо ТІЛЬКИ ті методи, які реально існують в твоєму API
+    allow_methods=["GET", "POST", "OPTIONS"],
+    # Дозволяємо ТІЛЬКИ ті заголовки, які ми очікуємо (напр. Authorization для токенів)
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 
