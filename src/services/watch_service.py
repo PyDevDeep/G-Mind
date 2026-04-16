@@ -13,11 +13,17 @@ settings = get_settings()
 class WatchService:
     def __init__(self):
         self.client = GmailClient()
-        self.service = self.client.get_service()
+        self._service: Any | None = None
         # Формування повного імені топіка для GCP
         self.topic_name = (
             f"projects/{settings.PUBSUB_PROJECT_ID}/topics/gmail-notifications"
         )
+
+    @property
+    def service(self) -> Any:
+        if self._service is None:
+            self._service = self.client.get_service()
+        return self._service
 
     def setup_watch(self, user_id: str = "me") -> dict[str, Any]:
         """Реєструє підписку на push-сповіщення Gmail для INBOX."""

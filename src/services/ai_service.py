@@ -194,8 +194,20 @@ class AIService:
     """Оркестратор LLM провайдерів з підтримкою Fallback стратегії."""
 
     def __init__(self):
-        self.primary = OpenAIProvider()
-        self.fallback = AnthropicProvider()
+        self._primary: OpenAIProvider | None = None
+        self._fallback: AnthropicProvider | None = None
+
+    @property
+    def primary(self) -> OpenAIProvider:
+        if self._primary is None:
+            self._primary = OpenAIProvider()
+        return self._primary
+
+    @property
+    def fallback(self) -> AnthropicProvider:
+        if self._fallback is None:
+            self._fallback = AnthropicProvider()
+        return self._fallback
 
     def classify(self, email_content: str) -> Tuple[ClassificationResult, AIUsageStats]:
         try:
