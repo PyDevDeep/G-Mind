@@ -11,7 +11,7 @@ from src.utils.logging import bind_correlation_id, get_logger
 logger = get_logger("celery_worker")
 settings = get_settings()
 
-# Явна типізація глобального реєстру часу
+# Explicit type for the global task-start-time registry
 _task_start_times: Dict[str, float] = {}
 
 celery_app = Celery(
@@ -38,8 +38,7 @@ celery_app.conf.update(
 
 @worker_ready.connect
 def start_metrics_server(**kwargs: Any) -> None:
-    """Запускає Prometheus HTTP сервер для кастомних метрик воркера."""
-    # Запускаємо сервер на порту 8001 всередині контейнера воркера
+    """Start the Prometheus HTTP server for worker custom metrics."""
     start_http_server(8001)
     logger.info("Prometheus metrics server started on port 8001")
 
@@ -52,8 +51,7 @@ def on_task_prerun(
     kwargs: Dict[str, Any],
     **others: Any,
 ) -> None:
-    """Викликається перед запуском кожної таски з повною типізацією."""
-    # Тепер Pylance знає, що це Optional[str]
+    """Record task start time and bind correlation ID before each task runs."""
     correlation_id: Optional[str] = kwargs.get("correlation_id")
     bind_correlation_id(correlation_id)
 
@@ -72,7 +70,7 @@ def on_task_postrun(
     state: str,
     **others: Any,
 ) -> None:
-    """Викликається після завершення таски з повною типізацією."""
+    """Log task completion and duration after each task finishes."""
     start_time: Optional[float] = _task_start_times.pop(task_id, None)
     duration: float = 0.0
 

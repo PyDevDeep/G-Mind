@@ -5,11 +5,7 @@ from slowapi import Limiter
 
 
 def get_real_ip(request: Request) -> str:
-    """
-    Витягує реальну IP-адресу клієнта, ігноруючи проксі-сервери.
-    Якщо запит пройшов через кілька проксі, X-Forwarded-For міститиме список IP.
-    Перший IP у списку - це оригінальний клієнт.
-    """
+    """Extract the real client IP, respecting X-Forwarded-For from proxies."""
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
         return forwarded_for.split(",")[0].strip()
@@ -18,18 +14,17 @@ def get_real_ip(request: Request) -> str:
     if real_ip:
         return real_ip
 
-    # Фолбек для локальної розробки (коли немає проксі)
+    # Fallback for local development without a proxy
     return request.client.host if request.client else "127.0.0.1"
 
 
-# Використовуємо Redis базу 1 для лімітів (Celery зазвичай використовує 0)
+# Use Redis DB 1 for rate limits so it doesn't collide with Celery on DB 0
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
-# Замінюємо базу на 1, якщо URL стандартний
 LIMITER_REDIS_URL = REDIS_URL[:-1] + "1" if REDIS_URL.endswith("/0") else REDIS_URL
 
 limiter = Limiter(
     key_func=get_real_ip,
     storage_uri=LIMITER_REDIS_URL,
-    strategy="fixed-window",  # Класичне вікно (напр., 60 запитів з 00:00 до 00:01)
-    headers_enabled=True,  # Повертає клієнту заголовки X-RateLimit-* (дуже важливо для API)
+    strategy="fixed-window",
+    headers_enabled=True,  # Return X-RateLimit-* headers to clients
 )

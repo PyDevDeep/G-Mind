@@ -17,18 +17,17 @@ from src.utils.logging import bind_correlation_id, configure_logging, get_logger
 
 settings = get_settings()
 
-# Ініціалізація логування
-# В production (VPS) краще встановити json_format=True
+# Initialize logging (set json_format=True in production / VPS)
 configure_logging(log_level=settings.LOG_LEVEL, json_format=False)
 logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Керування життєвим циклом додатку (startup / shutdown)."""
+    """Manage application startup and shutdown lifecycle."""
     logger.info("Starting up API...")
 
-    # Перевірка підключення до Redis
+    # Verify Redis connectivity on startup
     try:
         await redis_client.ping()  # type: ignore[no-untyped-call]
         logger.info("Redis connection established.")
@@ -43,22 +42,21 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="AI Email Assistant", lifespan=lifespan)
-# Реєструємо лімітер у стейті додатку (обов'язкова вимога slowapi)
+# Required by slowapi: attach limiter to app state
 app.state.limiter = limiter
-# Вчимо FastAPI віддавати правильний JSON при блокуванні (замість Internal Server Error)
+# Return proper JSON on rate-limit instead of Internal Server Error
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
-# Ініціалізація та експорт стандартних метрик FastAPI
+# Instrument and expose standard FastAPI Prometheus metrics
 Instrumentator().instrument(app).expose(app)
 app.include_router(api_router)
 
-# Безпека CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    # Дозволяємо ТІЛЬКИ ті методи, які реально існують в твоєму API
+    # Restrict to methods actually used by this API
     allow_methods=["GET", "POST", "OPTIONS"],
-    # Дозволяємо ТІЛЬКИ ті заголовки, які ми очікуємо (напр. Authorization для токенів)
+    # Restrict to headers expected by this API
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
@@ -67,13 +65,12 @@ app.add_middleware(
 async def correlation_id_middleware(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
-    """Покращена мідлвара з вимірюванням тривалості запиту."""
+    """Propagate correlation ID and log request duration for every HTTP request."""
     start_time = time.perf_counter()
 
     correlation_id = request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
     bind_correlation_id(correlation_id)
 
-    # Логуємо вхідний запит
     logger.info(
         "http_request_started",
         method=request.method,
@@ -85,7 +82,6 @@ async def correlation_id_middleware(
 
     process_time = time.perf_counter() - start_time
 
-    # Логуємо завершення з тривалістю
     logger.info(
         "http_request_completed",
         status_code=response.status_code,
@@ -98,5 +94,5 @@ async def correlation_id_middleware(
 
 @app.get("/health")
 async def health_check() -> dict[str, str]:
-    """Liveness probe для Docker/Nginx."""
+    """Liveness probe for Docker/Nginx."""
     return {"status": "ok"}

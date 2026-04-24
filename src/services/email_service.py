@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 
 
 def is_retryable_http_error(exception: BaseException) -> bool:
-    """Визначає, чи підлягає помилка HTTP повторному виконанню (429, 500+)."""
+    """Return True if the HTTP error is retryable (429 or 5xx)."""
     if isinstance(exception, HttpError):
         if exception.resp.status in [429, 500, 502, 503, 504]:
             return True
@@ -38,8 +38,8 @@ class EmailService:
         reraise=True,
     )
     def get_message(self, message_id: str, user_id: str = "me") -> Dict[str, Any]:
-        """Отримує повний лист за ID з експоненційним бекофом при лімітах."""
-        logger.info("Отримання листа", message_id=message_id)
+        """Fetch a full message by ID with exponential backoff on rate limits."""
+        logger.info("Fetching message", message_id=message_id)
         return (
             self.service.users()
             .messages()
@@ -50,8 +50,8 @@ class EmailService:
     def get_thread_messages(
         self, thread_id: str, limit: int = 5, user_id: str = "me"
     ) -> List[Dict[str, Any]]:
-        """Отримує останні N повідомлень з гілки для контексту AI."""
-        logger.info("Отримання гілки", thread_id=thread_id)
+        """Return the last N messages from a thread for AI context."""
+        logger.info("Fetching thread", thread_id=thread_id)
         thread = (
             self.service.users().threads().get(userId=user_id, id=thread_id).execute()
         )
@@ -66,8 +66,8 @@ class EmailService:
         thread_id: str | None = None,
         user_id: str = "me",
     ) -> str:
-        """Створює чернетку відповіді в Gmail."""
-        logger.info("Створення чернетки", recipient=to, thread_id=thread_id)
+        """Create a reply draft in Gmail and return its draft ID."""
+        logger.info("Creating draft", recipient=to, thread_id=thread_id)
         message = MIMEText(body)
         message["To"] = to
         message["Subject"] = subject
@@ -87,7 +87,7 @@ class EmailService:
         return draft["id"]
 
     def parse_email_body(self, payload: Dict[str, Any]) -> str:
-        """Рекурсивно парсить multipart payload та витягує текст, очищаючи HTML."""
+        """Recursively parse a multipart payload and return plain text, stripping HTML tags."""
 
         def _strip_html(text: str) -> str:
             clean = re.compile("<.*?>")
@@ -109,7 +109,7 @@ class EmailService:
                 elif "parts" in part:
                     text_content += _extract_data(part["parts"])
 
-            # Пріоритет: plain text. Якщо немає — беремо HTML і чистимо теги.
+            # Prefer plain text; fall back to stripped HTML
             if text_content:
                 return text_content
             return _strip_html(html_content)

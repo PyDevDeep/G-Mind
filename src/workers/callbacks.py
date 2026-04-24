@@ -20,10 +20,10 @@ def handle_task_failure(
     einfo: Any = None,
     **other: Any,
 ) -> None:
-    """Ловить усі падіння тасків після вичерпання ретраїв. Dead-letter queue handler."""
+    """Dead-letter handler: catch all task failures after retries are exhausted."""
     task_name: str = getattr(sender, "name", "Unknown")
 
-    # Гарантуємо, що safe_exception завжди є екземпляром Exception для type checker'а
+    # Ensure safe_exception is always an Exception instance for the type checker
     safe_exception: Exception = (
         exception if exception is not None else Exception("Unknown error")
     )
@@ -54,11 +54,11 @@ def handle_task_failure(
     try:
         service = WorkerService()
         asyncio.run(service.process_task_failure(email_id, safe_exception, stack_trace))
-        logger.info("Падіння таски успішно зафіксовано в базі даних", email_id=email_id)
+        logger.info("Task failure recorded in database", email_id=email_id)
     except Exception as db_error:
-        # Fallback логування, якщо лягла сама БД
+        # Fallback logging if the DB itself is down
         logger.critical(
-            "Не вдалося записати failed_task у БД",
+            "Failed to write failed_task to DB",
             error=str(db_error),
             original_error=str(safe_exception),
         )

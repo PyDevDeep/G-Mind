@@ -32,7 +32,7 @@ class GeneratedReply(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     subject: str = Field(..., max_length=1024, description="Тема листа-відповіді")
-    # Тіло листа лімітуємо 50 000 символами
+    # Cap email body at 50 000 characters to avoid oversized LLM prompts
     body: str = Field(
         ..., max_length=50000, description="Тіло листа-відповіді у форматі plain text"
     )

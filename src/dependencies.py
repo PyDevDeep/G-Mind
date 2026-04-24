@@ -8,7 +8,7 @@ from src.config import get_settings
 
 settings = get_settings()
 
-# Глобальний пул підключень до бази даних
+# Global async database connection pool
 engine = create_async_engine(
     settings.DATABASE_URL,
     poolclass=NullPool,
@@ -17,16 +17,16 @@ async_session_maker = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
 
-# Глобальний клієнт Redis
+# Global Redis client
 redis_client: Redis = Redis.from_url(settings.REDIS_URL, decode_responses=True)  # type: ignore[no-untyped-call]
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Dependency для ін'єкції сесії БД у роути FastAPI."""
+    """FastAPI dependency that yields a database session."""
     async with async_session_maker() as session:
         yield session
 
 
 async def get_redis() -> AsyncGenerator[Redis, None]:
-    """Dependency для ін'єкції Redis."""
+    """FastAPI dependency that yields the shared Redis client."""
     yield redis_client

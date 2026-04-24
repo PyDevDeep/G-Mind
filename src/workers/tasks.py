@@ -27,21 +27,21 @@ class GmailAPIError(Exception):
     max_retries=5,
 )
 def classify_email(self: Task, email_id: str, correlation_id: str | None = None):
+    """Classify an incoming email and chain to reply generation if needed."""
     bind_correlation_id(correlation_id or str(uuid.uuid4()))
-    logger.info("Початок класифікації листа", email_id=email_id)
+    logger.info("Starting email classification", email_id=email_id)
 
     try:
         service = WorkerService()
         result: dict[str, Any] = asyncio.run(service.process_classification(email_id))
 
         if result.get("category") == "needs_reply":
-            logger.info("Лист потребує відповіді, планування generate_ai_reply")
-            # Використовуємо cast або ignore для методу delay, якого Pylance не бачить
+            logger.info("Email requires reply, scheduling generate_ai_reply")
             generate_ai_reply.delay(email_id, correlation_id)  # type: ignore
 
         return {"status": "classified", "email_id": email_id}
     except Exception as e:
-        logger.error("Помилка під час класифікації", error=str(e))
+        logger.error("Classification failed", error=str(e))
         raise
 
 
@@ -52,19 +52,20 @@ def classify_email(self: Task, email_id: str, correlation_id: str | None = None)
     max_retries=3,
 )
 def generate_ai_reply(self: Task, email_id: str, correlation_id: str | None = None):
+    """Generate an AI reply for the email and chain to draft creation."""
     bind_correlation_id(correlation_id)
-    logger.info("Генерація AI відповіді", email_id=email_id)
+    logger.info("Generating AI reply", email_id=email_id)
 
     try:
         service = WorkerService()
         asyncio.run(service.process_reply_generation(email_id))
 
-        logger.info("Відповідь згенерована, планування send_draft")
+        logger.info("Reply generated, scheduling send_draft")
         send_draft.delay(email_id, correlation_id)  # type: ignore
 
         return {"status": "reply_generated", "email_id": email_id}
     except Exception as e:
-        logger.error("Помилка під час генерації відповіді", error=str(e))
+        logger.error("Reply generation failed", error=str(e))
         raise
 
 
@@ -75,19 +76,20 @@ def generate_ai_reply(self: Task, email_id: str, correlation_id: str | None = No
     max_retries=3,
 )
 def send_draft(self: Task, email_id: str, correlation_id: str | None = None):
+    """Create a Gmail draft from the generated reply, completing the pipeline."""
     bind_correlation_id(correlation_id)
-    logger.info("Створення чернетки Gmail", email_id=email_id)
+    logger.info("Creating Gmail draft", email_id=email_id)
 
     try:
         service = WorkerService()
         result: dict[str, Any] = asyncio.run(service.process_send_draft(email_id))
 
-        logger.info("Пайплайн успішно завершено", draft_id=result.get("draft_id"))
+        logger.info("Pipeline completed successfully", draft_id=result.get("draft_id"))
         return {
             "status": "draft_created",
             "email_id": email_id,
             "draft_id": result.get("draft_id"),
         }
     except Exception as e:
-        logger.error("Помилка під час створення чернетки", error=str(e))
+        logger.error("Draft creation failed", error=str(e))
         raise

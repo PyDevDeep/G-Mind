@@ -7,15 +7,17 @@ from uuid import uuid4
 
 import structlog
 
-# Змінна контексту для зберігання ID поточного запиту
+# Context variable holding the correlation ID for the current request/task
 correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="")
 
 
 def get_correlation_id() -> str:
+    """Return the current correlation ID from context."""
     return correlation_id_var.get()
 
 
 def bind_correlation_id(correlation_id: str | None = None) -> str:
+    """Set the correlation ID for the current context; generate one if not provided."""
     if not correlation_id:
         correlation_id = str(uuid4())
     correlation_id_var.set(correlation_id)
@@ -35,14 +37,15 @@ def add_correlation_id(
 def add_container_metadata(
     logger: logging.Logger, log_method: str, event_dict: MutableMapping[str, Any]
 ) -> MutableMapping[str, Any]:
-    """Додає метадані контейнера для зручної фільтрації в Loki."""
+    """Add container metadata fields to every log entry for Loki filtering."""
     event_dict["service_name"] = os.getenv("SERVICE_NAME", "ai-email-assistant")
     event_dict["environment"] = os.getenv("ENVIRONMENT", "production")
     return event_dict
 
 
 def configure_logging(log_level: str = "INFO", json_format: bool | None = None) -> None:
-    # Примусово вмикаємо JSON у Docker, якщо не передано інше
+    """Configure structlog with optional JSON output and container metadata processors."""
+    # Force JSON in Docker if not explicitly overridden
     if json_format is None:
         json_format = os.getenv("LOG_JSON_FORMAT", "true").lower() == "true"
 
@@ -55,7 +58,7 @@ def configure_logging(log_level: str = "INFO", json_format: bool | None = None) 
     processors = [
         structlog.contextvars.merge_contextvars,
         add_correlation_id,
-        add_container_metadata,  # <--- Додано процесор метаданих
+        add_container_metadata,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
@@ -66,7 +69,7 @@ def configure_logging(log_level: str = "INFO", json_format: bool | None = None) 
     if json_format:
         processors.append(structlog.processors.JSONRenderer())  # type: ignore[arg-type]
     else:
-        # Для локальної розробки кольоровий вивід зручніший
+        # Use colored console output for local development
         processors.append(structlog.dev.ConsoleRenderer())  # type: ignore[arg-type]
 
     structlog.configure(

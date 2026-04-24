@@ -15,10 +15,10 @@ settings = get_settings()
 
 
 class LLMProvider(Protocol):
-    """Загальний інтерфейс для всіх LLM провайдерів."""
+    """Shared interface for all LLM providers."""
 
     def classify(self, email_content: str) -> Tuple[ClassificationResult, AIUsageStats]:
-        """Аналізує текст листа та визначає його категорію."""
+        """Analyse email text and determine its category."""
         ...
 
     def generate_reply(
@@ -27,12 +27,12 @@ class LLMProvider(Protocol):
         context: list[Dict[str, Any]],
         classification: ClassificationResult,
     ) -> Tuple[GeneratedReply, AIUsageStats]:
-        """Генерує відповідь на основі поточного листа та попереднього контексту гілки."""
+        """Generate a reply based on the current email and prior thread context."""
         ...
 
 
 class OpenAIProvider(LLMProvider):
-    """Реалізація провайдера OpenAI (GPT-4o)."""
+    """OpenAI GPT-4o provider implementation."""
 
     def __init__(self):
         if not settings.OPENAI_API_KEY:
@@ -79,7 +79,6 @@ class OpenAIProvider(LLMProvider):
     ) -> Tuple[GeneratedReply, AIUsageStats]:
         start_time = time.time()
 
-        # Спрощення контексту для прикладу
         context_str = json.dumps([msg.get("snippet", "") for msg in context])
 
         prompt = (
@@ -109,11 +108,11 @@ class OpenAIProvider(LLMProvider):
             completion_tokens=usage.completion_tokens if usage else 0,
             processing_time_ms=duration,
         )
-        return result, stats  # (Кінець класу OpenAIProvider)
+        return result, stats
 
 
 class AnthropicProvider(LLMProvider):
-    """Реалізація провайдера Anthropic (Claude 3.5 Sonnet) як Fallback."""
+    """Anthropic Claude provider used as a fallback."""
 
     def __init__(self):
         if not settings.ANTHROPIC_API_KEY:
@@ -191,7 +190,7 @@ class AnthropicProvider(LLMProvider):
 
 
 class AIService:
-    """Оркестратор LLM провайдерів з підтримкою Fallback стратегії."""
+    """LLM provider orchestrator with primary/fallback strategy."""
 
     def __init__(self):
         self._primary: OpenAIProvider | None = None
@@ -214,11 +213,11 @@ class AIService:
             return self.primary.classify(email_content)
         except OpenAIRateLimitError as e:
             logger.warning(
-                "OpenAI Rate Limit перевищено. Перемикання на Claude", error=str(e)
+                "OpenAI rate limit exceeded, switching to Claude", error=str(e)
             )
             return self.fallback.classify(email_content)
         except Exception as e:
-            logger.error("Помилка OpenAI, перемикання на Claude", error=str(e))
+            logger.error("OpenAI error, switching to Claude", error=str(e))
             return self.fallback.classify(email_content)
 
     def generate_reply(
@@ -231,9 +230,9 @@ class AIService:
             return self.primary.generate_reply(email_content, context, classification)
         except OpenAIRateLimitError as e:
             logger.warning(
-                "OpenAI Rate Limit перевищено. Перемикання на Claude", error=str(e)
+                "OpenAI rate limit exceeded, switching to Claude", error=str(e)
             )
             return self.fallback.generate_reply(email_content, context, classification)
         except Exception as e:
-            logger.error("Помилка OpenAI, перемикання на Claude", error=str(e))
+            logger.error("OpenAI error, switching to Claude", error=str(e))
             return self.fallback.generate_reply(email_content, context, classification)

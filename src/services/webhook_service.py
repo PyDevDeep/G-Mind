@@ -17,6 +17,7 @@ class WebhookService:
         self.watch_service = WatchService()
 
     async def process_notification(self, notification: GmailNotification) -> None:
+        """Process a Gmail Pub/Sub notification: fetch new messages and dispatch Celery tasks."""
         redis_key = f"gmail_history_id:{notification.emailAddress}"
         last_history_id = await redis_client.get(redis_key)
 
@@ -42,7 +43,7 @@ class WebhookService:
             storage = StorageService(session)
 
             for msg_id in new_message_ids:
-                # Перевірка дедуплікації через StorageService
+                # Skip already-processed messages (deduplication)
                 if await storage.get_email_by_message_id(msg_id):
                     continue
 
@@ -50,12 +51,11 @@ class WebhookService:
                     self.email_service.get_message, msg_id
                 )
 
-                # Захист від зациклення
+                # Skip drafts and sent mail to avoid processing our own outgoing messages
                 label_ids = raw_msg.get("labelIds", [])
                 if "DRAFT" in label_ids or "SENT" in label_ids:
                     continue
 
-                # Формуємо дані для збереження
                 headers = {
                     h["name"].lower(): h["value"]
                     for h in raw_msg["payload"].get("headers", [])
@@ -69,7 +69,6 @@ class WebhookService:
                     "body": self.email_service.parse_email_body(raw_msg["payload"]),
                 }
 
-                # Атомарне збереження листа та задачі
                 email_db_id = await storage.save_incoming_email(email_data, raw_msg)
 
                 logger.info(

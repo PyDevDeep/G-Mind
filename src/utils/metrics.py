@@ -1,11 +1,11 @@
 from prometheus_client import Counter, Histogram
 
-# Лічильник оброблених листів (з розбивкою за фінальним статусом)
+# Counter of processed emails broken down by final status
 EMAILS_PROCESSED = Counter(
     "emails_processed_total", "Total emails processed by AI", ["status"]
 )
 
-# Гістограма тривалості класифікації
+# Histogram of AI classification duration
 CLASSIFICATION_LATENCY = Histogram(
     "classification_latency_seconds",
     "Latency of AI classification process",

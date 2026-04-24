@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
-        # Формат для SQLAlchemy + asyncpg
+        # SQLAlchemy async DSN format using asyncpg driver
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     # Redis
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     # App
     LOG_LEVEL: str = "INFO"
 
-    # Конфігурація Pydantic: читати з .env, ігнорувати зайві поля
+    # Pydantic config: read from .env, ignore unknown fields
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
@@ -48,5 +48,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Singleton pattern для конфігурації. Кешується після першого виклику."""
+    """Return the cached application settings singleton."""
     return Settings()

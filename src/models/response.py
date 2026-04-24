@@ -22,11 +22,10 @@ class AIResponse(Base, TimestampMixin):
     generated_reply: Mapped[str] = mapped_column(String, nullable=True)
     draft_id: Mapped[str] = mapped_column(String, nullable=True)
 
-    # Статистика використання
+    # LLM usage statistics
     model_used: Mapped[str] = mapped_column(String, nullable=False)
     prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
     completion_tokens: Mapped[int] = mapped_column(Integer, default=0)
     processing_time_ms: Mapped[int] = mapped_column(Integer, default=0)
 
-    # Відношення
     task: Mapped["ProcessingTask"] = relationship()

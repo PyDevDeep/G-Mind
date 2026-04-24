@@ -23,7 +23,7 @@ class Email(Base, TimestampMixin):
         DateTime(timezone=True), nullable=False
     )
 
-    # Зберігаємо сирий payload від Gmail API для можливого дебагу
+    # Raw Gmail API payload preserved for debugging
     raw_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=True)
 
     __table_args__ = (

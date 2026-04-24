@@ -21,9 +21,10 @@ class WorkerService:
         self.ai_service = AIService()
 
     async def process_classification(self, email_id: str) -> dict[str, Any]:
+        """Classify an email with AI and persist the result; returns category and task ID."""
         async with async_session_maker() as session:
             storage = StorageService(session)
-            u_email_id = uuid.UUID(email_id)  # Конвертуємо один раз
+            u_email_id = uuid.UUID(email_id)
 
             email = await storage.get_email(u_email_id)
             task = await storage.get_task_by_email_id(u_email_id)
@@ -50,13 +51,13 @@ class WorkerService:
             await storage.update_task_status(task.id, TaskStatusEnum.classified)
             await session.commit()
 
-            # Якщо лист не потребує відповіді, цикл завершено
             if classification.category.value != "needs_reply":
                 EMAILS_PROCESSED.labels(status=classification.category.value).inc()
 
             return {"category": classification.category.value, "task_id": str(task.id)}
 
     async def process_reply_generation(self, email_id: str) -> dict[str, Any]:
+        """Generate an AI reply draft and persist the result; returns task ID."""
         async with async_session_maker() as session:
             storage = StorageService(session)
             u_email_id = uuid.UUID(email_id)
@@ -101,6 +102,7 @@ class WorkerService:
             return {"task_id": str(task.id)}
 
     async def process_send_draft(self, email_id: str) -> dict[str, Any]:
+        """Create a Gmail draft from the stored AI reply; returns draft ID."""
         async with async_session_maker() as session:
             storage = StorageService(session)
             u_email_id = uuid.UUID(email_id)
@@ -135,17 +137,16 @@ class WorkerService:
     async def process_task_failure(
         self, email_id: str, exception: Exception, stack_trace: str
     ) -> None:
+        """Record a task failure in the database after all retries are exhausted."""
         async with async_session_maker() as session:
             storage = StorageService(session)
             u_email_id = uuid.UUID(email_id)
             task = await storage.get_task_by_email_id(u_email_id)
 
-            # Guard Clause: Якщо таски немає, просто виходимо
             if not task:
                 logger.error("Task not found for failure processing", email_id=email_id)
                 return
 
-            # Тепер Pylance знає, що task точно не None
             await storage.create_failed_task(
                 task_id=task.id,
                 error_type=type(exception).__name__,
@@ -155,5 +156,4 @@ class WorkerService:
             await storage.update_task_status(task.id, TaskStatusEnum.failed)
             await session.commit()
 
-            # Записуємо метрику (з Task 4.1.1)
             EMAILS_PROCESSED.labels(status="failed").inc()

@@ -40,5 +40,4 @@ class ProcessingTask(Base, TimestampMixin):
         DateTime(timezone=True), nullable=True
     )
 
-    # Відношення
     email: Mapped["Email"] = relationship()
