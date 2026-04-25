@@ -136,7 +136,7 @@ class TestProcessClassification:
                 storage_inst.get_task_by_email_id = AsyncMock(return_value=None)
                 MockStorage.return_value = storage_inst
 
-                with pytest.raises(ValueError, match="Entity not found"):
+                with pytest.raises(ValueError, match="Email or task not found"):
                     await worker.process_classification(email_id)
 
     async def test_raises_value_error_when_task_not_found(
@@ -153,7 +153,7 @@ class TestProcessClassification:
                 storage_inst.get_task_by_email_id = AsyncMock(return_value=None)
                 MockStorage.return_value = storage_inst
 
-                with pytest.raises(ValueError, match="Entity not found"):
+                with pytest.raises(ValueError, match="Email or task not found"):
                     await worker.process_classification(email_id)
 
     async def test_raises_value_error_on_invalid_uuid_string(
@@ -287,7 +287,7 @@ class TestProcessReplyGeneration:
                 storage_inst.get_task_by_email_id = AsyncMock(return_value=None)
                 MockStorage.return_value = storage_inst
 
-                with pytest.raises(ValueError, match="Not found"):
+                with pytest.raises(ValueError, match="Email or task not found"):
                     await worker.process_reply_generation(email_id)
 
     async def test_raises_value_error_when_only_task_missing(
@@ -304,7 +304,7 @@ class TestProcessReplyGeneration:
                 storage_inst.get_task_by_email_id = AsyncMock(return_value=None)
                 MockStorage.return_value = storage_inst
 
-                with pytest.raises(ValueError, match="Not found"):
+                with pytest.raises(ValueError, match="Email or task not found"):
                     await worker.process_reply_generation(email_id)
 
     async def test_raises_value_error_when_ai_response_missing(
@@ -432,7 +432,7 @@ class TestProcessSendDraft:
                 storage_inst.get_task_by_email_id = AsyncMock(return_value=None)
                 MockStorage.return_value = storage_inst
 
-                with pytest.raises(ValueError, match="Not found"):
+                with pytest.raises(ValueError, match="Email or task not found"):
                     await worker.process_send_draft(email_id)
 
     async def test_raises_value_error_when_ai_response_missing(

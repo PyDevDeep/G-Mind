@@ -46,7 +46,7 @@ def mock_external_apis() -> Generator[dict[str, Any], None, None]:
     with (
         patch("src.services.webhook_service.redis_client", mock_redis),
         # Celery .delay() замокується — asyncio.run() всередині задачі конфліктує з pytest event loop
-        patch("src.services.webhook_service.classify_email") as mock_celery_task,
+        patch("src.services.queue_service.classify_email") as mock_celery_task,
         patch(
             "src.services.webhook_service.WatchService.check_history_gap"
         ) as mock_watch,

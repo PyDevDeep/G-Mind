@@ -40,7 +40,7 @@ def base_mocks() -> Generator[dict[str, Any], None, None]:
 
     with (
         patch("src.services.webhook_service.redis_client", mock_redis),
-        patch("src.services.webhook_service.classify_email") as mock_celery,
+        patch("src.services.queue_service.classify_email") as mock_celery,
         patch(
             "src.services.webhook_service.WatchService.check_history_gap"
         ) as mock_watch,
@@ -108,11 +108,10 @@ class TestWebhookServiceLabelFiltering:
             "msg-skip", label_ids=[label]
         )
 
-        with patch("src.services.webhook_service.StorageService") as MockStorage:
-            storage_inst = AsyncMock()
-            storage_inst.get_email_by_message_id = AsyncMock(return_value=None)
-            storage_inst.save_incoming_email = AsyncMock()
-            MockStorage.return_value = storage_inst
+        with patch("src.services.webhook_service.QueueService") as MockQueue:
+            queue_inst = AsyncMock()
+
+            MockQueue.return_value = queue_inst
 
             svc = WebhookService()
             await svc.process_notification(
@@ -121,7 +120,7 @@ class TestWebhookServiceLabelFiltering:
                 )
             )
 
-            storage_inst.save_incoming_email.assert_not_awaited()
+            queue_inst.dispatch_email_processing.assert_not_awaited()
 
         base_mocks["celery"].delay.assert_not_called()
 
