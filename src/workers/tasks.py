@@ -1,12 +1,22 @@
+"""Celery task definitions for the email processing pipeline.
+
+Changes vs original:
+- classify_email chains to generate_ai_reply for BOTH 'needs_reply' AND 'urgent'
+- asyncio loop handling via get/create pattern for thread-pool safety
+"""
+
 import asyncio
 import uuid
-from typing import Any
+from collections.abc import Coroutine
+from typing import Any, TypeVar
 
 from celery import Task
 
 from src.services.worker_service import WorkerService
 from src.utils.logging import bind_correlation_id, get_logger
 from src.workers.celery_app import celery_app
+
+_T = TypeVar("_T")
 
 logger = get_logger(__name__)
 
@@ -17,6 +27,42 @@ class LLMRateLimitError(Exception):
 
 class GmailAPIError(Exception):
     pass
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _run_async(coro: Coroutine[Any, Any, _T]) -> _T:
+    """Run a coroutine safely regardless of whether a loop already exists.
+
+    Under `-P threads` each thread may or may not have a running loop.
+    `asyncio.run()` always creates a fresh loop, which is fine for threads
+    but will crash under prefork if a loop is already running.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        # Unlikely in Celery threads, but safe fallback
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return asyncio.run(coro)
+
+
+# Categories that trigger reply generation
+_REPLY_CATEGORIES = frozenset({"needs_reply", "urgent"})
+
+
+# ---------------------------------------------------------------------------
+# Tasks
+# ---------------------------------------------------------------------------
 
 
 @celery_app.task(  # type: ignore[misc]
@@ -33,10 +79,14 @@ def classify_email(self: Task, email_id: str, correlation_id: str | None = None)
 
     try:
         service = WorkerService()
-        result: dict[str, Any] = asyncio.run(service.process_classification(email_id))
+        result: dict[str, Any] = _run_async(service.process_classification(email_id))
 
-        if result.get("category") == "needs_reply":
-            logger.info("Email requires reply, scheduling generate_ai_reply")
+        category = result.get("category")
+        if category in _REPLY_CATEGORIES:
+            logger.info(
+                "Email requires reply, scheduling generate_ai_reply",
+                category=category,
+            )
             generate_ai_reply.delay(email_id, correlation_id)  # type: ignore
 
         return {"status": "classified", "email_id": email_id}
@@ -58,7 +108,7 @@ def generate_ai_reply(self: Task, email_id: str, correlation_id: str | None = No
 
     try:
         service = WorkerService()
-        asyncio.run(service.process_reply_generation(email_id))
+        _run_async(service.process_reply_generation(email_id))
 
         logger.info("Reply generated, scheduling send_draft")
         send_draft.delay(email_id, correlation_id)  # type: ignore
@@ -82,7 +132,7 @@ def send_draft(self: Task, email_id: str, correlation_id: str | None = None):
 
     try:
         service = WorkerService()
-        result: dict[str, Any] = asyncio.run(service.process_send_draft(email_id))
+        result: dict[str, Any] = _run_async(service.process_send_draft(email_id))
 
         logger.info("Pipeline completed successfully", draft_id=result.get("draft_id"))
         return {
