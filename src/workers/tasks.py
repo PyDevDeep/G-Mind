@@ -13,7 +13,7 @@ from typing import Any, TypeVar
 from celery import Task
 
 from src.services.worker_service import WorkerService
-from src.utils.logging import bind_correlation_id, get_logger
+from src.utils.logger import bind_correlation_id, get_logger
 from src.workers.celery_app import celery_app
 
 _T = TypeVar("_T")

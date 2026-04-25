@@ -1,6 +1,6 @@
 """Pydantic schemas for Email API responses.
 
-Roadmap requirement: src/schemas/email.py — EmailCreate, EmailRead, EmailBrief
+Roadmap requirement: src.schemas.emails.py — EmailCreate, EmailRead, EmailBrief
 """
 
 import uuid

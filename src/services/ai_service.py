@@ -18,7 +18,7 @@ from openai import RateLimitError as OpenAIRateLimitError
 
 from src.config import get_settings
 from src.schemas.ai import AIUsageStats, ClassificationResult, GeneratedReply
-from src.utils.logging import get_logger
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 settings = get_settings()

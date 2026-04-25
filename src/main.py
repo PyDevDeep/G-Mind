@@ -21,7 +21,7 @@ from src.api.router import api_router
 from src.config import get_settings
 from src.dependencies import engine, redis_client
 from src.utils.limiter import limiter
-from src.utils.logging import bind_correlation_id, configure_logging, get_logger
+from src.utils.logger import bind_correlation_id, configure_logging, get_logger
 
 settings = get_settings()
 

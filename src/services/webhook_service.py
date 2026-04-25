@@ -11,7 +11,7 @@ from src.schemas.webhook import GmailNotification
 from src.services.email_service import EmailService
 from src.services.queue_service import QueueService
 from src.services.watch_service import WatchService
-from src.utils.logging import get_logger
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

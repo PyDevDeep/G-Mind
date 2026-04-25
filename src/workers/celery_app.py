@@ -12,7 +12,7 @@ from celery.signals import task_postrun, task_prerun, worker_ready
 from prometheus_client import start_http_server
 
 from src.config import get_settings
-from src.utils.logging import bind_correlation_id, get_logger
+from src.utils.logger import bind_correlation_id, get_logger
 
 logger = get_logger("celery_worker")
 settings = get_settings()

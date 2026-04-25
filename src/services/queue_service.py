@@ -11,7 +11,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.services.storage_service import StorageService
-from src.utils.logging import get_logger
+from src.utils.logger import get_logger
 from src.workers.tasks import classify_email
 
 logger = get_logger(__name__)

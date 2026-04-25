@@ -68,8 +68,9 @@ exclude = [
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "S", "W", "N", "UP", "C4", "SIM", "RUF", "A", "DTZ", "TID", "ASYNC", "PT"]
-ignore = ["F401", "E501", "B008"]
-
+ignore = ["F401", "E501", "B008","RUF001", "RUF002", "RUF003", "N815", "S107"]
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "N806", "SIM117", "PT011", "PT006"]
 
 [tool.ruff.format]
 quote-style = "double"

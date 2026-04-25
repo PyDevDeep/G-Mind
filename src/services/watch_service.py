@@ -4,7 +4,7 @@ from googleapiclient.errors import HttpError
 
 from src.config import get_settings
 from src.utils.gmail import GmailClient
-from src.utils.logging import get_logger
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 settings = get_settings()

@@ -8,7 +8,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from src.schemas.email import EmailBrief
+from src.schemas.emails import EmailBrief
 
 
 class TaskResponse(BaseModel):

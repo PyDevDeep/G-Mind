@@ -4,7 +4,7 @@ from typing import Any
 from celery.signals import task_failure
 
 from src.services.worker_service import WorkerService
-from src.utils.logging import get_logger
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

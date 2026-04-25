@@ -5,7 +5,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.services.watch_service import WatchService
-from src.utils.logging import configure_logging
+from src.utils.logger import configure_logging
 
 
 def main():

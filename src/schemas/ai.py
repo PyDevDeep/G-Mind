@@ -3,7 +3,7 @@ import enum
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class ClassificationCategory(str, enum.Enum):
+class ClassificationCategory(enum.StrEnum):
     spam = "spam"
     needs_reply = "needs_reply"
     informational = "informational"

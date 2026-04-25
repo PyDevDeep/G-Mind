@@ -14,7 +14,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src.models.email import Email
+from src.models.emails import Email
 from src.models.failed_task import FailedTask
 from src.models.response import AIResponse
 from src.models.task import ProcessingTask, TaskStatusEnum

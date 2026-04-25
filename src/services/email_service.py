@@ -1,23 +1,26 @@
 import base64
 import re
 from email.mime.text import MIMEText
-from typing import Any, Dict, List
+from typing import Any
 
 from googleapiclient.errors import HttpError
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from src.utils.gmail import GmailClient
-from src.utils.logging import get_logger
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 def is_retryable_http_error(exception: BaseException) -> bool:
     """Return True if the HTTP error is retryable (429 or 5xx)."""
-    if isinstance(exception, HttpError):
-        if exception.resp.status in [429, 500, 502, 503, 504]:
-            return True
-    return False
+    return isinstance(exception, HttpError) and exception.resp.status in [
+        429,
+        500,
+        502,
+        503,
+        504,
+    ]
 
 
 class EmailService:
@@ -37,7 +40,7 @@ class EmailService:
         retry=retry_if_exception(is_retryable_http_error),
         reraise=True,
     )
-    def get_message(self, message_id: str, user_id: str = "me") -> Dict[str, Any]:
+    def get_message(self, message_id: str, user_id: str = "me") -> dict[str, Any]:
         """Fetch a full message by ID with exponential backoff on rate limits."""
         logger.info("Fetching message", message_id=message_id)
         return (
@@ -49,7 +52,7 @@ class EmailService:
 
     def get_thread_messages(
         self, thread_id: str, limit: int = 5, user_id: str = "me"
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Return the last N messages from a thread for AI context."""
         logger.info("Fetching thread", thread_id=thread_id)
         thread = (
@@ -73,7 +76,7 @@ class EmailService:
         message["Subject"] = subject
 
         raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
-        draft_body: Dict[str, Any] = {"message": {"raw": raw_message}}
+        draft_body: dict[str, Any] = {"message": {"raw": raw_message}}
 
         if thread_id:
             draft_body["message"]["threadId"] = thread_id
@@ -86,14 +89,14 @@ class EmailService:
         )
         return draft["id"]
 
-    def parse_email_body(self, payload: Dict[str, Any]) -> str:
+    def parse_email_body(self, payload: dict[str, Any]) -> str:
         """Recursively parse a multipart payload and return plain text, stripping HTML tags."""
 
         def _strip_html(text: str) -> str:
             clean = re.compile("<.*?>")
             return re.sub(clean, "", text)
 
-        def _extract_data(parts: List[Dict[str, Any]]) -> str:
+        def _extract_data(parts: list[dict[str, Any]]) -> str:
             text_content = ""
             html_content = ""
 

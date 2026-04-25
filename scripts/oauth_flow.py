@@ -19,7 +19,7 @@ def main():
 
     # Шляхи до файлів (враховуючи, що скрипт запускається з кореня)
     creds_path = "credentials.json"
-    token_path = "token.json"
+    auth_cache_file = "token.json"
 
     if not os.path.exists(creds_path):
         print(f"Помилка: Файл {creds_path} не знайдено!")
@@ -27,8 +27,8 @@ def main():
         sys.exit(1)
 
     # Завантаження існуючого токена, якщо він є
-    if os.path.exists(token_path):
-        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+    if os.path.exists(auth_cache_file):
+        creds = Credentials.from_authorized_user_file(auth_cache_file, SCOPES)
 
     # Якщо немає валідних credentials, робимо логін
     if not creds or not creds.valid:
@@ -42,9 +42,9 @@ def main():
             creds = flow.run_local_server(port=8080)
 
         # Збереження токена для наступних запусків
-        with open(token_path, "w") as token:
+        with open(auth_cache_file, "w") as token:
             token.write(creds.to_json())
-            print(f"Успіх! Токени збережено у {token_path}")
+            print(f"Успіх! Токени збережено у {auth_cache_file}")
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Header, Request
 from src.schemas.webhook import WebhookPayload
 from src.services.webhook_service import WebhookService
 from src.utils.limiter import limiter
-from src.utils.logging import get_correlation_id, get_logger
+from src.utils.logger import get_correlation_id, get_logger
 from src.utils.pubsub import decode_pubsub_message, verify_pubsub_token
 
 logger = get_logger(__name__)

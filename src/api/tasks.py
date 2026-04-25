@@ -16,7 +16,7 @@ from src.models.task import TaskStatusEnum
 from src.schemas.task import TaskBrief, TaskResponse, TaskRetryResponse
 from src.services.queue_service import QueueService
 from src.services.storage_service import StorageService
-from src.utils.logging import get_logger
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["Tasks"])

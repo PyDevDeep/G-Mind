@@ -14,13 +14,13 @@ Strategy: mock AsyncSession entirely — no DB required for unit tests.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.models.email import Email
+from src.models.emails import Email
 from src.models.failed_task import FailedTask
 from src.models.response import AIResponse
 from src.models.task import ProcessingTask, TaskStatusEnum
@@ -145,7 +145,7 @@ class TestCreateEmail:
         self, storage: StorageService, session: AsyncMock
     ) -> None:
         """Якщо received_at передано — не перезаписується."""
-        fixed_dt = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        fixed_dt = datetime(2025, 1, 1, tzinfo=UTC)
         email_data: dict[str, Any] = {
             "message_id": "msg-2",
             "thread_id": "thr-1",

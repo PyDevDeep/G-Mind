@@ -1,8 +1,9 @@
 import logging
 import os
 import sys
+from collections.abc import MutableMapping
 from contextvars import ContextVar
-from typing import Any, MutableMapping
+from typing import Any
 from uuid import uuid4
 
 import structlog

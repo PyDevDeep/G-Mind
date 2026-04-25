@@ -15,13 +15,13 @@ from typing import Any, NamedTuple
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.dependencies import async_session_maker
-from src.models.email import Email
+from src.models.emails import Email
 from src.models.task import ProcessingTask, TaskStatusEnum
 from src.schemas.ai import ClassificationCategory, ClassificationResult
 from src.services.ai_service import AIService
 from src.services.email_service import EmailService
 from src.services.storage_service import StorageService
-from src.utils.logging import get_logger
+from src.utils.logger import get_logger
 from src.utils.metrics import CLASSIFICATION_LATENCY, EMAILS_PROCESSED
 
 logger = get_logger(__name__)
