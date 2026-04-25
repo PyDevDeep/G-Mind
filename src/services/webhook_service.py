@@ -1,12 +1,17 @@
+"""Webhook orchestration service.
+
+Handles Gmail Pub/Sub notifications: fetches history, retrieves new
+messages, and delegates deduplication + dispatch to QueueService.
+"""
+
 import asyncio
 
 from src.dependencies import async_session_maker, redis_client
 from src.schemas.webhook import GmailNotification
 from src.services.email_service import EmailService
-from src.services.storage_service import StorageService
+from src.services.queue_service import QueueService
 from src.services.watch_service import WatchService
 from src.utils.logging import get_logger
-from src.workers.tasks import classify_email
 
 logger = get_logger(__name__)
 
@@ -16,7 +21,11 @@ class WebhookService:
         self.email_service = EmailService()
         self.watch_service = WatchService()
 
-    async def process_notification(self, notification: GmailNotification) -> None:
+    async def process_notification(
+        self,
+        notification: GmailNotification,
+        correlation_id: str | None = None,
+    ) -> None:
         """Process a Gmail Pub/Sub notification: fetch new messages and dispatch Celery tasks."""
         redis_key = f"gmail_history_id:{notification.emailAddress}"
         last_history_id = await redis_client.get(redis_key)
@@ -40,13 +49,9 @@ class WebhookService:
             return
 
         async with async_session_maker() as session:
-            storage = StorageService(session)
+            queue = QueueService(session, redis_client)
 
             for msg_id in new_message_ids:
-                # Skip already-processed messages (deduplication)
-                if await storage.get_email_by_message_id(msg_id):
-                    continue
-
                 raw_msg = await asyncio.to_thread(
                     self.email_service.get_message, msg_id
                 )
@@ -69,11 +74,11 @@ class WebhookService:
                     "body": self.email_service.parse_email_body(raw_msg["payload"]),
                 }
 
-                email_db_id = await storage.save_incoming_email(email_data, raw_msg)
-
-                logger.info(
-                    "Email registered, dispatching task", email_id=str(email_db_id)
+                await queue.dispatch_email_processing(
+                    message_id=msg_id,
+                    email_data=email_data,
+                    raw_payload=raw_msg,
+                    correlation_id=correlation_id,
                 )
-                classify_email.delay(str(email_db_id))  # type: ignore[attr-defined]
 
         await redis_client.set(redis_key, str(notification.historyId))
