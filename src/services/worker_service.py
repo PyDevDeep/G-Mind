@@ -8,8 +8,9 @@ import asyncio
 import json
 import time
 import uuid
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, NamedTuple
+from typing import Any, NamedTuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,7 +39,7 @@ class _EmailTaskPair(NamedTuple):
 
 @asynccontextmanager
 async def _storage_session() -> AsyncIterator[tuple[StorageService, AsyncSession]]:
-    """Yield a (StorageService, session) pair. Eliminates 4× boilerplate."""
+    """Yield a (StorageService, session) pair. Eliminates 4x boilerplate."""
     async with async_session_maker() as session:
         yield StorageService(session), session
 
@@ -46,7 +47,7 @@ async def _storage_session() -> AsyncIterator[tuple[StorageService, AsyncSession
 async def _load_email_and_task(
     storage: StorageService, email_id: str
 ) -> _EmailTaskPair:
-    """Load and validate an Email + ProcessingTask pair. Eliminates 3× boilerplate."""
+    """Load and validate an Email + ProcessingTask pair. Eliminates 3x boilerplate."""
     u_email_id = uuid.UUID(email_id)
     email = await storage.get_email(u_email_id)
     task = await storage.get_task_by_email_id(u_email_id)

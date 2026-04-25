@@ -6,8 +6,9 @@ Changes vs original:
 """
 
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional, Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,11 +27,11 @@ class StorageService:
 
     # --- Email CRUD ---
 
-    async def get_email(self, email_id: uuid.UUID) -> Optional[Email]:
+    async def get_email(self, email_id: uuid.UUID) -> Email | None:
         """Return an Email by primary key, or None if not found."""
         return await self.session.get(Email, email_id)
 
-    async def get_email_by_message_id(self, message_id: str) -> Optional[Email]:
+    async def get_email_by_message_id(self, message_id: str) -> Email | None:
         """Return an Email by Gmail message ID, or None if not found."""
         stmt = select(Email).where(Email.message_id == message_id)
         return (await self.session.execute(stmt)).scalar_one_or_none()
@@ -39,14 +40,14 @@ class StorageService:
         """Create an email record; transaction is committed by the caller."""
         email = Email(**email_data)
         if not email.received_at:
-            email.received_at = datetime.now(timezone.utc)
+            email.received_at = datetime.now(UTC)
         self.session.add(email)
         await self.session.flush()
         return email
 
     # --- Task CRUD ---
 
-    async def get_task(self, task_id: uuid.UUID) -> Optional[ProcessingTask]:
+    async def get_task(self, task_id: uuid.UUID) -> ProcessingTask | None:
         """Return a ProcessingTask by primary key with eager-loaded email."""
         stmt = (
             select(ProcessingTask)
@@ -62,16 +63,14 @@ class StorageService:
         await self.session.flush()
         return task
 
-    async def get_task_by_email_id(
-        self, email_id: uuid.UUID
-    ) -> Optional[ProcessingTask]:
+    async def get_task_by_email_id(self, email_id: uuid.UUID) -> ProcessingTask | None:
         """Return the ProcessingTask associated with an email, or None."""
         stmt = select(ProcessingTask).where(ProcessingTask.email_id == email_id)
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
     async def list_tasks(
         self,
-        status: Optional[TaskStatusEnum] = None,
+        status: TaskStatusEnum | None = None,
         limit: int = 50,
     ) -> Sequence[ProcessingTask]:
         """Return tasks optionally filtered by status, newest first."""
@@ -85,7 +84,7 @@ class StorageService:
         self,
         task_id: uuid.UUID,
         status: TaskStatusEnum,
-        celery_id: Optional[str] = None,
+        celery_id: str | None = None,
     ) -> None:
         update_data: dict[str, Any] = {"status": status}
         if celery_id:
@@ -96,9 +95,9 @@ class StorageService:
             TaskStatusEnum.failed,
             TaskStatusEnum.draft_created,
         ]:
-            update_data["completed_at"] = datetime.now(timezone.utc)
+            update_data["completed_at"] = datetime.now(UTC)
         elif status == TaskStatusEnum.processing:
-            update_data["started_at"] = datetime.now(timezone.utc)
+            update_data["started_at"] = datetime.now(UTC)
 
         stmt = (
             update(ProcessingTask)
@@ -127,8 +126,8 @@ class StorageService:
         classification: str,
         confidence: float,
         stats: AIUsageStats,
-        generated_reply: Optional[str] = None,
-        draft_id: Optional[str] = None,
+        generated_reply: str | None = None,
+        draft_id: str | None = None,
     ) -> AIResponse:
         stmt = select(AIResponse).where(AIResponse.task_id == task_id)
         response = (await self.session.execute(stmt)).scalar_one_or_none()
@@ -159,9 +158,7 @@ class StorageService:
         await self.session.flush()
         return response
 
-    async def get_ai_response_by_task_id(
-        self, task_id: uuid.UUID
-    ) -> Optional[AIResponse]:
+    async def get_ai_response_by_task_id(self, task_id: uuid.UUID) -> AIResponse | None:
         """Return the AIResponse for a given task ID, or None."""
         stmt = select(AIResponse).where(AIResponse.task_id == task_id)
         result = await self.session.execute(stmt)
@@ -174,7 +171,7 @@ class StorageService:
         task_id: uuid.UUID,
         error_type: str,
         message: str,
-        stack: Optional[str] = None,
+        stack: str | None = None,
     ) -> FailedTask:
         failed = FailedTask(
             task_id=task_id,
@@ -187,7 +184,7 @@ class StorageService:
         await self.session.flush()
         return failed
 
-    async def get_ai_response(self, task_id: uuid.UUID) -> Optional[AIResponse]:
+    async def get_ai_response(self, task_id: uuid.UUID) -> AIResponse | None:
         stmt = select(AIResponse).where(AIResponse.task_id == task_id)
         return (await self.session.execute(stmt)).scalar_one_or_none()
 

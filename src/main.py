@@ -1,7 +1,15 @@
+"""FastAPI application factory.
+
+Changes vs original:
+- Security headers (HSTS, X-Frame-Options, X-Content-Type-Options, CSP,
+  Referrer-Policy, Permissions-Policy) injected via existing HTTP middleware
+- Avoids adding a second middleware — headers set in correlation_id_middleware
+"""
+
 import time
 import uuid
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -61,11 +69,30 @@ app.add_middleware(
 )
 
 
+# ---------------------------------------------------------------------------
+# Security headers (roadmap: TASK 5.1.2)
+# ---------------------------------------------------------------------------
+_SECURITY_HEADERS: dict[str, str] = {
+    # Prevent clickjacking — this API has no pages to frame
+    "X-Frame-Options": "DENY",
+    # Stop browsers from MIME-sniffing the content-type
+    "X-Content-Type-Options": "nosniff",
+    # Enable HSTS — force HTTPS for 1 year, including subdomains
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    # Restrict resources to same-origin; allow inline styles for Swagger UI
+    "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:",
+    # Send origin only on cross-origin requests
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    # Disable browser features this API doesn't need
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+}
+
+
 @app.middleware("http")
 async def correlation_id_middleware(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
-    """Propagate correlation ID and log request duration for every HTTP request."""
+    """Propagate correlation ID, log request duration, and inject security headers."""
     start_time = time.perf_counter()
 
     correlation_id = request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
@@ -89,6 +116,11 @@ async def correlation_id_middleware(
     )
 
     response.headers["X-Correlation-ID"] = correlation_id
+
+    # Inject security headers into every response
+    for header, value in _SECURITY_HEADERS.items():
+        response.headers[header] = value
+
     return response
 
 

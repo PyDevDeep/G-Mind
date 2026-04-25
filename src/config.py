@@ -1,5 +1,4 @@
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -17,7 +16,7 @@ class Settings(BaseSettings):
 
     @computed_field
     @property
-    def DATABASE_URL(self) -> str:
+    def DATABASE_URL(self) -> str:  # noqa: N802
         # SQLAlchemy async DSN format using asyncpg driver
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
@@ -27,20 +26,20 @@ class Settings(BaseSettings):
 
     @computed_field
     @property
-    def REDIS_URL(self) -> str:
+    def REDIS_URL(self) -> str:  # noqa: N802
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
 
     # API Keys
-    GMAIL_CLIENT_ID: Optional[str] = None
-    GMAIL_CLIENT_SECRET: Optional[str] = None
-    OPENAI_API_KEY: Optional[str] = None
-    ANTHROPIC_API_KEY: Optional[str] = None
-    PUBSUB_PROJECT_ID: Optional[str] = None
+    GMAIL_CLIENT_ID: str | None = None
+    GMAIL_CLIENT_SECRET: str | None = None
+    OPENAI_API_KEY: str | None = None
+    ANTHROPIC_API_KEY: str | None = None
+    PUBSUB_PROJECT_ID: str | None = None
 
     # Pub/Sub OIDC audience — set to your webhook URL in production
     # e.g. "https://your-domain.com/api/v1/webhook/gmail"
     # When None, OIDC verification is skipped (dev mode)
-    PUBSUB_AUDIENCE: Optional[str] = None
+    PUBSUB_AUDIENCE: str | None = None
 
     # App
     LOG_LEVEL: str = "INFO"

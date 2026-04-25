@@ -5,7 +5,7 @@ Changes vs original:
 """
 
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from celery import Celery, Task
 from celery.signals import task_postrun, task_prerun, worker_ready
@@ -18,7 +18,7 @@ logger = get_logger("celery_worker")
 settings = get_settings()
 
 # Explicit type for the global task-start-time registry
-_task_start_times: Dict[str, float] = {}
+_task_start_times: dict[str, float] = {}
 
 celery_app = Celery(
     "ai_email_worker",
@@ -64,12 +64,12 @@ def start_metrics_server(**kwargs: Any) -> None:
 def on_task_prerun(
     task_id: str,
     task: Task,
-    args: Tuple[Any, ...],
-    kwargs: Dict[str, Any],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
     **others: Any,
 ) -> None:
     """Record task start time and bind correlation ID before each task runs."""
-    correlation_id: Optional[str] = kwargs.get("correlation_id")
+    correlation_id: str | None = kwargs.get("correlation_id")
     bind_correlation_id(correlation_id)
 
     _task_start_times[task_id] = time.perf_counter()
@@ -81,14 +81,14 @@ def on_task_prerun(
 def on_task_postrun(
     task_id: str,
     task: Task,
-    args: Tuple[Any, ...],
-    kwargs: Dict[str, Any],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
     retval: Any,
     state: str,
     **others: Any,
 ) -> None:
     """Log task completion and duration after each task finishes."""
-    start_time: Optional[float] = _task_start_times.pop(task_id, None)
+    start_time: float | None = _task_start_times.pop(task_id, None)
     duration: float = 0.0
 
     if start_time is not None:

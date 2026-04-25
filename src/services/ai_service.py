@@ -9,7 +9,8 @@ Changes vs original:
 import json
 import threading
 import time
-from typing import Any, Callable, Dict, Protocol, Tuple, TypeVar
+from collections.abc import Callable
+from typing import Any, Protocol, TypeVar
 
 from anthropic import Anthropic
 from openai import OpenAI
@@ -68,9 +69,11 @@ class CircuitBreaker:
     @property
     def state(self) -> str:
         with self._lock:
-            if self._state == self.OPEN:
-                if time.monotonic() - self._opened_at >= self._cooldown_seconds:
-                    self._state = self.HALF_OPEN
+            if (
+                self._state == self.OPEN
+                and time.monotonic() - self._opened_at >= self._cooldown_seconds
+            ):
+                self._state = self.HALF_OPEN
             return self._state
 
     def record_success(self) -> None:
@@ -105,14 +108,14 @@ class LLMProvider(Protocol):
 
     def classify(
         self, email_content: str
-    ) -> Tuple[ClassificationResult, AIUsageStats]: ...
+    ) -> tuple[ClassificationResult, AIUsageStats]: ...
 
     def generate_reply(
         self,
         email_content: str,
-        context: list[Dict[str, Any]],
+        context: list[dict[str, Any]],
         classification: ClassificationResult,
-    ) -> Tuple[GeneratedReply, AIUsageStats]: ...
+    ) -> tuple[GeneratedReply, AIUsageStats]: ...
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +132,7 @@ class OpenAIProvider:
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
         self.model = "gpt-4o"
 
-    def classify(self, email_content: str) -> Tuple[ClassificationResult, AIUsageStats]:
+    def classify(self, email_content: str) -> tuple[ClassificationResult, AIUsageStats]:
         start_time = time.time()
 
         prompt = CLASSIFY_PROMPT.format(email_content=email_content)
@@ -157,9 +160,9 @@ class OpenAIProvider:
     def generate_reply(
         self,
         email_content: str,
-        context: list[Dict[str, Any]],
+        context: list[dict[str, Any]],
         classification: ClassificationResult,
-    ) -> Tuple[GeneratedReply, AIUsageStats]:
+    ) -> tuple[GeneratedReply, AIUsageStats]:
         start_time = time.time()
         context_str = json.dumps([msg.get("snippet", "") for msg in context])
 
@@ -200,7 +203,7 @@ class AnthropicProvider:
         self.client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
         self.model = "claude-sonnet-4-20250514"
 
-    def classify(self, email_content: str) -> Tuple[ClassificationResult, AIUsageStats]:
+    def classify(self, email_content: str) -> tuple[ClassificationResult, AIUsageStats]:
         start_time = time.time()
 
         # Anthropic doesn't support response_format; instruct via prompt instead
@@ -231,9 +234,9 @@ class AnthropicProvider:
     def generate_reply(
         self,
         email_content: str,
-        context: list[Dict[str, Any]],
+        context: list[dict[str, Any]],
         classification: ClassificationResult,
-    ) -> Tuple[GeneratedReply, AIUsageStats]:
+    ) -> tuple[GeneratedReply, AIUsageStats]:
         start_time = time.time()
         context_str = json.dumps([msg.get("snippet", "") for msg in context])
 
@@ -322,7 +325,7 @@ class AIService:
 
     # -- public API ---------------------------------------------------------
 
-    def classify(self, email_content: str) -> Tuple[ClassificationResult, AIUsageStats]:
+    def classify(self, email_content: str) -> tuple[ClassificationResult, AIUsageStats]:
         return self._call_with_breaker(
             primary_fn=lambda: self.primary.classify(email_content),
             fallback_fn=lambda: self.fallback.classify(email_content),
@@ -331,9 +334,9 @@ class AIService:
     def generate_reply(
         self,
         email_content: str,
-        context: list[Dict[str, Any]],
+        context: list[dict[str, Any]],
         classification: ClassificationResult,
-    ) -> Tuple[GeneratedReply, AIUsageStats]:
+    ) -> tuple[GeneratedReply, AIUsageStats]:
         return self._call_with_breaker(
             primary_fn=lambda: self.primary.generate_reply(
                 email_content, context, classification
