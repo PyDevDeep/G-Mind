@@ -1,3 +1,9 @@
+"""Celery application configuration.
+
+Changes vs original:
+- Added beat_schedule with 'renew-gmail-watch' job every 6 days (518400s)
+"""
+
 import time
 from typing import Any, Dict, Optional, Tuple
 
@@ -34,6 +40,17 @@ celery_app.conf.update(
     worker_send_task_events=True,
     task_send_sent_event=True,
 )
+
+# ---------------------------------------------------------------------------
+# Beat schedule — periodic tasks executed by celery-beat
+# ---------------------------------------------------------------------------
+# Gmail watch() expires after 7 days max. Renew every 6 days for safety margin.
+celery_app.conf.beat_schedule = {
+    "renew-gmail-watch": {
+        "task": "src.workers.tasks.renew_gmail_watch",
+        "schedule": 518_400.0,  # 6 days in seconds
+    },
+}
 
 
 @worker_ready.connect

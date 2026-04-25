@@ -143,3 +143,37 @@ def send_draft(self: Task, email_id: str, correlation_id: str | None = None):
     except Exception as e:
         logger.error("Draft creation failed", error=str(e))
         raise
+
+
+# ---------------------------------------------------------------------------
+# Periodic tasks (executed by celery-beat)
+# ---------------------------------------------------------------------------
+
+
+@celery_app.task(  # type: ignore[misc]
+    bind=True,
+    autoretry_for=(GmailAPIError,),
+    retry_backoff=300,
+    max_retries=3,
+)
+def renew_gmail_watch(self: Task):
+    """Renew Gmail push-notification subscription before the 7-day expiry.
+
+    Scheduled by celery-beat every 6 days (see celery_app.conf.beat_schedule).
+    """
+    from src.services.watch_service import WatchService
+
+    logger.info("Periodic task: renewing Gmail watch() subscription")
+
+    try:
+        service = WatchService()
+        result = service.renew_watch()
+        logger.info(
+            "Gmail watch renewed successfully",
+            history_id=result.get("historyId"),
+            expiration=result.get("expiration"),
+        )
+        return {"status": "renewed", "expiration": result.get("expiration")}
+    except Exception as e:
+        logger.error("Gmail watch renewal failed", error=str(e))
+        raise
