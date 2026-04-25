@@ -51,7 +51,17 @@ class WebhookService:
         async with async_session_maker() as session:
             queue = QueueService(session, redis_client)
 
+            from src.services.storage_service import StorageService
+
+            storage = StorageService(session)
+
             for msg_id in new_message_ids:
+                if await storage.get_email_by_message_id(msg_id):
+                    logger.info(
+                        "Duplicate suppressed by early DB lookup", message_id=msg_id
+                    )
+                    continue
+
                 raw_msg = await asyncio.to_thread(
                     self.email_service.get_message, msg_id
                 )
