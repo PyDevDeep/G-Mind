@@ -40,6 +40,7 @@ fakeredis = "^2.22.0"
 ruff = ">=0.9.5"
 pyright = ">=1.1.400"
 pre-commit = "^3.7.0"
+safety = "^3.7.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -66,7 +67,7 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "S", "W", "N", "UP", "C4", "SIM", "RUF", "A", "DTZ"]
+select = ["E", "F", "I", "B", "S", "W", "N", "UP", "C4", "SIM", "RUF", "A", "DTZ", "TID", "ASYNC", "PT"]
 ignore = ["F401", "E501", "B008"]
 
 
