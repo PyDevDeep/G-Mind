@@ -32,6 +32,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,7 +40,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11" # Зміни на свою версію, якщо інша
+          python-version: "3.11"
 
       - name: Install Poetry
         run: curl -sSL https://install.python-poetry.org | python3 -
@@ -55,34 +56,12 @@ jobs:
 
       - name: Security Audit (pip-audit)
         run: |
-          pip install pip-audit
-          poetry self add poetry-plugin-export
-          poetry export -f requirements.txt --output requirements.txt
+          pip install pip-audit poetry-plugin-export
+          poetry export -f requirements.txt --output requirements.txt --without-hashes
           pip-audit -r requirements.txt
 
       - name: Run DB Migrations
         run: poetry run alembic upgrade head
 
       - name: Run Tests with Coverage
-        # Зміни --cov-fail-under на свій реальний відсоток (напр. 50), щоб не блокувати деплой
         run: poetry run pytest --cov=src --cov-report=xml --cov-fail-under=60
-
-  deploy:
-    # Деплой запускається ТІЛЬКИ якщо тести і лінтери пройшли успішно
-    needs: test-and-lint
-    # Деплой працює ТІЛЬКИ при пуші в main (не для pull requests)
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Execute Remote SSH Commands
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          # Шлях має відповідати директорії проєкту на твоєму сервері (напр. /home/ubuntu/G-Mind)
-          script: |
-            cd /home/${{ secrets.SERVER_USER }}/G-Mind
-            git pull origin main
-            docker compose up -d --build
