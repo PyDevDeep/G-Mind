@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # PostgreSQL
     POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres_password"
+    POSTGRES_PASSWORD: str = "postgres_password"  # noqa: S105
     POSTGRES_DB: str = "ai_email_db"
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5434
