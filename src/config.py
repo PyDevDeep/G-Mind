@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: Optional[str] = None
     PUBSUB_PROJECT_ID: Optional[str] = None
 
+    # Pub/Sub OIDC audience — set to your webhook URL in production
+    # e.g. "https://your-domain.com/api/v1/webhook/gmail"
+    # When None, OIDC verification is skipped (dev mode)
+    PUBSUB_AUDIENCE: Optional[str] = None
+
     # App
     LOG_LEVEL: str = "INFO"
 
