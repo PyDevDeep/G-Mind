@@ -1,9 +1,17 @@
+"""PostgreSQL CRUD operations for all domain entities.
+
+Changes vs original:
+- Added get_task(task_id) — needed by GET /tasks/{id}
+- Added list_tasks(status, limit) — needed by GET /tasks?status=
+"""
+
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional, Sequence
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from src.models.email import Email
 from src.models.failed_task import FailedTask
@@ -38,6 +46,15 @@ class StorageService:
 
     # --- Task CRUD ---
 
+    async def get_task(self, task_id: uuid.UUID) -> Optional[ProcessingTask]:
+        """Return a ProcessingTask by primary key with eager-loaded email."""
+        stmt = (
+            select(ProcessingTask)
+            .options(joinedload(ProcessingTask.email))
+            .where(ProcessingTask.id == task_id)
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
     async def create_task(self, email_id: uuid.UUID) -> ProcessingTask:
         """Create a pending ProcessingTask for the given email."""
         task = ProcessingTask(email_id=email_id, status=TaskStatusEnum.pending)
@@ -51,6 +68,18 @@ class StorageService:
         """Return the ProcessingTask associated with an email, or None."""
         stmt = select(ProcessingTask).where(ProcessingTask.email_id == email_id)
         return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def list_tasks(
+        self,
+        status: Optional[TaskStatusEnum] = None,
+        limit: int = 50,
+    ) -> Sequence[ProcessingTask]:
+        """Return tasks optionally filtered by status, newest first."""
+        stmt = select(ProcessingTask).order_by(ProcessingTask.created_at.desc())
+        if status is not None:
+            stmt = stmt.where(ProcessingTask.status == status)
+        stmt = stmt.limit(limit)
+        return (await self.session.execute(stmt)).scalars().all()
 
     async def update_task_status(
         self,
